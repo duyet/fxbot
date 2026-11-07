@@ -153,7 +153,7 @@ Checks use the harness the last phases used: a disposable Postgres, a check serv
 
 **M6. Wrap up**
 - [x] `npm run typecheck`, `npm run build`, and `npm run build-site` pass.
-- [ ] The full regression from the last phases still passes. It was still running at this commit, past 530 checks with none failed.
+- [x] The full regression from the last phases still passes: 922 checks, none failed. It ran before **Change look** came in, which has 21 checks of its own.
 - [x] Docs, changelog, and each plugin's version are updated, and this plan moves to `_completed`.
 
 ## 5. Open questions
