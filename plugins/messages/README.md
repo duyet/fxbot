@@ -9,6 +9,7 @@ Add it from **Plugins**, where fxbot's list has it. It runs inside fxbot: read i
 - **Sending:** a bot calls `messages_send` with `to`, `text`, and optionally `reply: false` and `files`. Who it's from, its conversation, and what it answers come from the call and the rows, never from the model.
 - **Where it goes:** the receiver's own chat, in a pill that opens to "From Bob" with the sender's words. A working bot takes it in where it is, through core's steering, and an idle one wakes. A message with an image waits for the running turn, since joining would end it, and so does a message to a turn that takes none.
 - **What the model gets:** a frame that opens by saying this isn't from the owner, with the words quoted, what the sender can't OK, and whether a reply is expected. libfx labels every steer as the user's, so the frame is what says otherwise. When libfx lets a steer name its author, core passes it.
+- **What the owner asked:** when the owner's own words began the conversation, what started that turn and what they added while it ran, up to 2,000 characters, every bot it reaches but the one they were said to gets them in its frame, quoted from that bot's chat, before the sender's words, which it can't write. It says when they name the bot. The message passes them to core as `asked`, for a reviewer such as the permissions plugin's, on fxbot 0.7.0 or newer.
 - **Who a bot can reach:** the others the plugin is on for, named in its instructions, each with its line from **Messages** in its settings. Any can reach any: the plugin's switch for each bot is how an owner narrows it.
 
 ## In a chat
@@ -66,8 +67,8 @@ A value outside its range means its default, with a line in the plugin's log.
 
 ## Tables
 
-In the plugin's own schema, `plugin_messages`, from `fxbot/migrations/0001_messages.sql`:
-- `conversations`: each thread, by the turn that began it, and when it was stopped
+In the plugin's own schema, `plugin_messages`, from `fxbot/migrations/`:
+- `conversations`: each thread, by the turn that began it, the owner's words that began it, and when it was stopped
 - `messages`: each message, its words, who it's from and to, what it answers, the turn it started or joined, and how it went
 - `roles`: what each bot does, for the others
 
@@ -90,6 +91,7 @@ Each send deletes conversations older than 30 days. Removing the plugin drops th
 | `plugin.json` | Its name, its parts, and its settings |
 | `fxbot/server.ts` | The tool and its guards, delivery, the reply rule, limits, and the routes |
 | `fxbot/migrations/0001_messages.sql` | Its three tables |
+| `fxbot/migrations/0002_asked.sql` | The owner's words on a conversation |
 | `fxbot/page.jsx` | The Messages screen, the card in a reply, the line in a bot's settings, and a tag in a sent message |
 | `fxbot/box.jsx` | The message box, with `@` and its chips |
 | `fxbot/page.css` | The box's styles, and the rules ProseMirror needs |

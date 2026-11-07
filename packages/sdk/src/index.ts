@@ -212,8 +212,8 @@ export async function createFxbot(options: FxbotOptions) {
           return id;
         },
         ownerSaid: async (bot, limit) => (await get(bot), history.ownerSaid(bot, limit)),
-        send: async (plugin, bot, { text, shown, label, steer, files, session, messageId = crypto.randomUUID() }) =>
-          (started(), deliver(bot, { text, files, messageId }, { session, from: plugin, shown, label, steer })),
+        send: async (plugin, bot, { text, shown, label, steer, files, session, messageId = crypto.randomUUID(), asked }) =>
+          (started(), deliver(bot, { text, files, messageId }, { session, from: plugin, shown, label, steer, asked })),
         async stream(plugin, bot, session, cursor = 0) {
           started();
           const profile = await get(bot);
@@ -346,7 +346,7 @@ export async function createFxbot(options: FxbotOptions) {
 
   // Each turn's reply is saved after the turn ends, and close waits for the saves.
   const saving = new Set<Promise<void>>();
-  type Sent = { text: string; from?: string; steer?: boolean };
+  type Sent = { text: string; from?: string; steer?: boolean; asked?: string };
   type Stoppable = { cancel(): Promise<void> };
   function finish({ id, provider }: { id: string; provider: string }, chat: Stoppable, sessionId: string, turn: FxTurn | FxResumeTurn, sent: Sent = { text: "" }, reader?: "own" | "next") {
     // After turn.end, so a plugin hears a turn end before the one behind it starts.
@@ -381,7 +381,7 @@ export async function createFxbot(options: FxbotOptions) {
     const chat = await open(profile, sessionId);
     finish(profile, chat, sessionId, chat.resume(), undefined, "next");
   }
-  const heard = ({ text, from }: Sent) => ({ text, ...(from ? { from } : {}) });
+  const heard = ({ text, from, asked }: Sent) => ({ text, ...(from ? { from } : {}), ...(asked ? { asked } : {}) });
 
   // Every session with a turn running, in any chat of any bot, so a bot or a provider that goes can end them. Each keeps
   // the session it was opened with: an agent that's closing waits for its turns, opens no session, and can still cancel
@@ -629,21 +629,22 @@ export async function createFxbot(options: FxbotOptions) {
 
   // A message to a bot's own chat, or to a plugin's session for it. Resolves once libfx has stored the prompt; the reply
   // arrives on the stream. libfx takes at most 8 images, 3.75 MiB each and 6 MiB together. A plugin's message names it,
-  // and can show other words and another name in the chat than the model gets.
-  async function deliver(id: string, { text, messageId, files = [] }: Message, { session, from, shown, label, steer }: { session?: string; from?: string; shown?: string; label?: string; steer?: boolean } = {}) {
+  // and can show other words and another name in the chat than the model gets, and the owner's words it carries on.
+  async function deliver(id: string, { text, messageId, files = [] }: Message, { session, from, shown, label, steer, asked }: { session?: string; from?: string; shown?: string; label?: string; steer?: boolean; asked?: string } = {}) {
     // A message to the bot's own chat waits for a start-over of it.
     if (!session) while (moving.has(id)) await moving.get(id);
     let profile = await get(id);
     if (!Array.isArray(files) || files.length > 8) fail(400, "files must be a list of at most 8");
     if (typeof text !== "string" || (!text.trim() && !files.length)) fail(400, "text is required");
     if (typeof messageId !== "string" || !/^[\w.-]{1,128}$/.test(messageId)) fail(400, "messageId must be 1 to 128 letters, digits, '.', '_', or '-'");
+    if (asked !== undefined && (typeof asked !== "string" || asked.length > 8000)) fail(400, "asked must be text, up to 8,000 characters");
     if (!(await modelFor(profile))) fail(400, "No model. Pick a default model for this bot's provider in Settings, or give the bot one.");
     if (session) await pluginSession(from!, profile, session);
     // Saved before the prompt, so a restart still finds the session and every upload knows its chat. A concurrent
     // first send keeps the id already saved.
     else if (!profile.sessionId) profile = (await store.profiles.claimSession(id, await (await providers.agentFor(profile.provider, "")).newSessionId())) ?? fail(404, "profile not found");
     let sessionId = session ?? profile.sessionId!;
-    const by = from ? { from } : {};
+    const by = { ...(from ? { from } : {}), ...(asked?.trim() ? { asked } : {}) };
     let done: (() => void) | undefined;
     // Plugins may change the message, or handle it themselves, and then no turn runs.
     if (packages.hooked("message")) {

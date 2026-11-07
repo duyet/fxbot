@@ -8,7 +8,7 @@ import type { LibraryItem, Memory, Profile, Upload } from "./types.ts";
 // A hook's event. A handler changes the event's fields in place, and the next handler sees the change.
 export type HookEvents = {
   /** Before a message runs: change `text` and `files`, or answer `{ handled: true }` and no turn runs. */
-  message: { bot: string; session: string; text: string; files: Upload[]; from?: string };
+  message: { bot: string; session: string; text: string; files: Upload[]; from?: string; asked?: string };
   /** Each time a chat opens: add, change, or remove entries. */
   instructions: { bot: string; session: string; instructions: string[] };
   /** Before every tool call: change `input`, or answer `{ block: reason }`, which the model gets as a failed call, or
@@ -18,9 +18,9 @@ export type HookEvents = {
   /** After it: change `result`. A call that failed has `error` instead. */
   "tool.after": { bot: string; session: string; messageId: string; tool: string; input: unknown; result?: unknown; error?: string };
   /** Once libfx accepts the prompt, or in a bot's own chat, when a turn it waited behind ends. Only observes. */
-  "turn.start": { bot: string; session: string; messageId: string; text: string; from?: string };
+  "turn.start": { bot: string; session: string; messageId: string; text: string; from?: string; asked?: string };
   /** When the turn ends, with its reply, or `error` when it failed, or `cancelled` when it was stopped. Only observes. */
-  "turn.end": { bot: string; session: string; messageId: string; text: string; reply: string; error?: string; cancelled?: boolean; from?: string };
+  "turn.end": { bot: string; session: string; messageId: string; text: string; reply: string; error?: string; cancelled?: boolean; from?: string; asked?: string };
   /** An item left the library, for every bot. It reaches every running plugin, and only observes. Since 0.7.0. */
   "library.removed": { id: string };
   /** The plugin's settings changed. */
@@ -104,8 +104,10 @@ export type PluginApi = {
     /** A message, as the owner's are sent, marked as the plugin's. Without `session`, it goes to the bot's own chat.
      * `shown` is what the chat shows of it, when that isn't `text`, which the model gets, and `label` who it says it's
      * from, in place of the plugin. With `steer`, a message to the own chat joins a turn that's running, and answers
-     * that turn's id as `joined`, and its own turn takes messages the same way. One with an image waits instead. Since 0.6.0. */
-    send(bot: string, message: { text: string; shown?: string; label?: string; steer?: boolean; files?: Upload[]; session?: string; messageId?: string }): Promise<{ messageId: string; sessionId: string; joined?: string }>;
+     * that turn's id as `joined`, and its own turn takes messages the same way. One with an image waits instead. Since 0.6.0.
+     * `asked` is the owner's own words this message carries on, which the plugin quotes from a chat of theirs, such as
+     * what they asked the bot that sent it. Hooks get it with the message and its turn. Since 0.7.0. */
+    send(bot: string, message: { text: string; shown?: string; label?: string; steer?: boolean; files?: Upload[]; session?: string; messageId?: string; asked?: string }): Promise<{ messageId: string; sessionId: string; joined?: string }>;
     /** A session's lines as NDJSON, from `cursor` on, then each new one. */
     stream(bot: string, session: string, cursor?: number): Promise<ReadableStream<Uint8Array>>;
     /** The owner's newest messages in the bot's own chat, oldest first: no plugin's, and no other bot's. Since 0.6.0. */

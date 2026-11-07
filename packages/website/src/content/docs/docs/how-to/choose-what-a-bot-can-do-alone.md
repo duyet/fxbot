@@ -13,7 +13,7 @@ Decide what each bot does by itself and what it asks you about first, with a mod
 | Mode | What it does |
 | --- | --- |
 | **Ask** | Asks you before anything but a safe tool |
-| **Auto** | Runs safe tools. A reviewer model checks the rest against what you said, and asks you when it's unsure |
+| **Auto** | Runs safe tools and everyday work. A reviewer model looks for what's risky, and asks you about it unless you asked for it |
 | **Yolo** | Runs everything, with no checks. It's what fxbot does without this plugin |
 
 A safe tool only reads, or writes the bot's own notes: its memories, its library, its chat history, and its skills. Tools from MCP servers are never safe, whatever they say about themselves.
@@ -44,7 +44,7 @@ A card from your own chat waits for as long as you take, and the bot waits with 
 
 **Settings** › **Permissions** has the reviewer. It's each bot's own model at first, or you can pick a provider and model for every bot. A small, fast one is usually enough, and costs less.
 
-The reviewer sees what you wrote and the action. It doesn't see tool results, what other bots said, or the rest of the chat, so what fooled the bot can't reach it, except through the action itself.
+The reviewer sees what you wrote and the action. When a bot works on what you asked another bot, which passed it on, the reviewer sees what you asked, in your words, too. It allows everyday work, such as editing files, running builds and tests, installing packages, and starting services, whether or not you asked for that step. It asks you about what's risky, unless you plainly asked for it: deleting what can't be put back, changing something outside the bot's own computer, such as a remote API, a deploy, or a push, touching secrets such as keys and passwords, weakening security, and spending money. It doesn't see tool results, what other bots said, or the rest of the chat, so what fooled the bot can't reach it, except through the action itself.
 
 ## What it can't do
 

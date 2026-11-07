@@ -116,11 +116,11 @@ Handlers run in the order the plugins were added, and change the event's fields 
 
 | Event | When | Fields | Can |
 | --- | --- | --- | --- |
-| `message` | Before a message runs, after the chat is known | `bot`, `session`, `text`, `files`, `from` | Change `text` and `files`; answer `{ handled: true }`, and no turn runs; or answer `{ startOver: { ask } }`, and the message goes to a new chat |
+| `message` | Before a message runs, after the chat is known | `bot`, `session`, `text`, `files`, `from`, `asked` | Change `text` and `files`; answer `{ handled: true }`, and no turn runs; or answer `{ startOver: { ask } }`, and the message goes to a new chat |
 | `instructions` | Each time a chat opens | `bot`, `session`, `instructions`, a list | Add, change, or remove entries |
 | `tool.before` | Before every tool call: fxbot's, MCP servers', skills', and plugins' | `bot`, `session`, `messageId`, the message whose turn it's in, since 0.6.0, and since 0.6.0, `callId`, which holds across a restart, `tool`, `description`, `input`, and `safe`, the tool's own word that it only reads or writes the bot's own notes | Change `input`, answer `{ block: reason }`, which the model gets as a failed call, or since 0.6.0 answer `{ wait }`: a function core calls after every hook, with `{ input }`, the final one, and no time limit but the call's own. It answers `{ block: reason }`, or nothing, and the call runs |
 | `tool.after` | After it | the same, with `result`, or `error` when it failed | Change `result` |
-| `turn.start` | Once libfx stores the prompt, or since 0.6.0, in a bot's own chat, when the turn it waited behind ends | `bot`, `session`, `messageId`, `text`, `from` | Observe |
+| `turn.start` | Once libfx stores the prompt, or since 0.6.0, in a bot's own chat, when the turn it waited behind ends | `bot`, `session`, `messageId`, `text`, `from`, `asked` | Observe |
 | `turn.end` | When the turn ends | the same, with `reply`, `error` when it failed, as when the provider answered with an error, and `cancelled` when it was stopped, since 0.6.0 | Observe |
 | `library.removed` | An item left the library, for every bot. It reaches every running plugin, whichever bots it's on for. Since 0.7.0. | `id` | Observe |
 | `settings` | The owner changed its settings | `settings` | Observe |
@@ -129,6 +129,7 @@ Handlers run in the order the plugins were added, and change the event's fields 
 - `message`, `instructions`, `tool.before`, and `tool.after` handlers get 5 seconds each. One that throws or runs late is logged and skipped, except `tool.before`, where it blocks the call.
 - `turn.start` and `turn.end` run beside the turn, and never hold it up.
 - `from` is the plugin that sent the message, when one did.
+- `asked`, since 0.7.0, is the owner's words a plugin's message carried on, as `send` was given them, when it had any. The plugin that sent them vouches they're the owner's.
 - A message that joins a running turn runs the `message` hook as ever, and has no `turn.start` or `turn.end` of its own: those are the running turn's. See [Turns](#turns).
 - A message that a `message` hook handled answers `send` with `{ messageId, sessionId, handled: true }`.
 - `{ startOver: { ask } }`, since 0.5.0, starts the bot's own chat over before the message runs: the bot's model summarizes the chat, answering `ask`, up to 16 KiB of text, and the bot starts a new chat from that summary, as a provider switch does. The message then goes to the new chat as the owner's. It applies only to the bot's own chat, only to a chat with messages, and only once for a message: a retry of one that went through doesn't start over again. The other plugins' hooks still run, and the first `startOver` counts. A message left with no text and no files answers `handled: true`. A summary that fails fails the send, with 502, and nothing moves. The fresh plugin, in fxbot's `plugins/fresh`, is one.
@@ -202,7 +203,7 @@ A plugin's turns run as the owner's do, with the same hooks, history, library, a
 | Call | What it does |
 | --- | --- |
 | `fx.chats.newSession(bot)` | A session of the plugin's own for the bot, on the bot's provider now. Keep its id. |
-| `fx.chats.send(bot, { text, shown?, label?, steer?, files?, session?, messageId? })` | A message. `shown`, since 0.6.0, is what the chat shows of it, when that isn't `text`, which the model gets. Without `session`, it goes to the bot's own chat, which shows it as "From <plugin>". With one, it stays out of the bot's chat, its earlier chats, and its preview, and `chat_history` still finds it. `messageId` defaults to a new UUID. |
+| `fx.chats.send(bot, { text, shown?, label?, steer?, files?, session?, messageId?, asked? })` | A message. `shown`, since 0.6.0, is what the chat shows of it, when that isn't `text`, which the model gets. Without `session`, it goes to the bot's own chat, which shows it as "From <plugin>". With one, it stays out of the bot's chat, its earlier chats, and its preview, and `chat_history` still finds it. `messageId` defaults to a new UUID. `asked`, since 0.7.0, is the owner's own words the message carries on, up to 8,000 characters, which the plugin quotes from a chat of theirs, such as what they asked the bot it's from. Hooks get it with the message and its turn. |
 | `fx.chats.stream(bot, session, cursor?)` | That session's lines, as NDJSON, from `cursor` on, then each new one. The same lines as [`fxbot.stream`](/sdk/how-to/stream-replies/). |
 | `fx.chats.ownerSaid(bot, limit)` | The owner's newest messages in the bot's own chat, oldest first, with no plugin's or other bot's. Since 0.6.0. |
 | `fx.chats.cancel(bot, session?)` | Stops the turn running in one of the plugin's own sessions, if one runs. It ends `cancelled`, and the session's stream says so. Since 0.4.1. With no `session`, since 0.6.0, it stops the turn running in the bot's own chat, if this plugin started it. Any other turn there throws with `status` 409, and with nothing running it does nothing. |

@@ -24,7 +24,7 @@ The call waits in place, through `tool.before`'s `wait`, so what the owner appro
 
 ## The reviewer
 
-One tool-free request, on the bot's own model, or the provider and model picked in **Settings** › **Permissions**. It gets the owner's last 10 messages, the bot's name, the action as JSON, and for a turn from a plugin in `trusted`, that turn's text. It gets no tool results, no other bot's words, and no chat, so what attacked the bot can't reach it, except through the action itself.
+One tool-free request, on the bot's own model, or the provider and model picked in **Settings** › **Permissions**. It gets the owner's last 10 messages, the bot's name, the action as JSON, for a turn from a plugin in `trusted`, that turn's text, and the owner's words a plugin's message carried on, as `asked`, such as what they asked the bot whose message the turn works on. Its rules allow everyday work, such as reading, editing files, builds, tests, installs, starting services, and messaging the owner's other bots, whether or not the owner asked for that step. They flag what's risky unless the owner plainly asked for it: deleting or overwriting what can't be put back, changing something outside the bot's own computer, secrets, weaker security, and spending money. It gets no tool results, no other bot's words, and no chat, so what attacked the bot can't reach it, except through the action itself.
 
 Only a clean `allow` runs a call. A flag, an error, a timeout, an answer that isn't JSON, or an action over 16 KiB shows a card. An identical call in a turn pays once.
 
