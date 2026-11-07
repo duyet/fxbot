@@ -185,7 +185,7 @@ function NewBot({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange
         </DialogHeader>
         <BotForm
           id="new-bot"
-          className="grid h-[min(70dvh,34rem)] content-start gap-6 overflow-y-auto px-4 pb-6 pt-3 sm:px-6 @2xl:pt-6"
+          className="grid h-[min(70dvh,34rem)] content-start gap-6 overflow-y-auto px-4 pb-6 sm:px-6 @2xl:pt-6"
           onCreated={onCreated}
           footer={(disabled) => (
             <DialogFooter className="mx-0 mb-0 px-6 py-4">
