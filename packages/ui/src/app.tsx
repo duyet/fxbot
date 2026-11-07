@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
-import { ArrowUpIcon, CheckIcon, ChevronRightIcon, CopyIcon, FileTextIcon, HouseIcon, LayoutDashboardIcon, MessageCircleDashedIcon, PanelRightIcon, PaperclipIcon, PencilIcon, PinIcon, PinOffIcon, PlusIcon, PuzzleIcon, SettingsIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
+import { ArrowUpIcon, CheckIcon, ChevronRightIcon, CopyIcon, FileTextIcon, LayoutDashboardIcon, MessageCircleDashedIcon, PanelRightIcon, PaperclipIcon, PencilIcon, PinIcon, PinOffIcon, PlusIcon, PuzzleIcon, SettingsIcon, SquareIcon, StarIcon, Trash2Icon, XIcon } from "lucide-react";
 import { Attachment, AttachmentAction, AttachmentActions, AttachmentContent, AttachmentGroup, AttachmentMedia, AttachmentTitle, AttachmentTrigger } from "@/components/ui/attachment";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -217,8 +217,16 @@ function BotSidebar({ profiles, offline, active, onNew, onChange }: { profiles: 
     setOpenMobile(false);
   };
   const watch = (id: string) => ({ onPointerEnter: () => setHovered(id), onPointerLeave: () => setHovered(null) });
+  // The default bot wears a star here, and nowhere else. size-3!: the list's button sizes every svg in it as an icon.
   const blob = (profile: Profile, size: number, className = "") => (
-    <Blob {...profile} size={size} follow={profile.id === active || profile.id === hovered} className={className} />
+    <span className="relative grid shrink-0">
+      <Blob {...profile} size={size} follow={profile.id === active || profile.id === hovered} className={className} />
+      {profile.isDefault && (
+        <span role="img" aria-label="Default bot" title="Default bot" className={`absolute -right-1 -bottom-1 grid place-items-center rounded-full bg-background shadow-sm ${size > 48 ? "size-6" : "size-5"}`}>
+          <StarIcon className={`fill-amber-400 text-amber-500 ${size > 48 ? "size-3.5!" : "size-3!"}`} />
+        </span>
+      )}
+    </span>
   );
   const done = (work: Promise<unknown>) => work.then(() => (setProblem(""), onChange()), (e: Error) => setProblem(e.message));
   const pin = (profile: Profile, pinned: boolean) => done(client.profiles.update(profile.id, { pinned }));
@@ -254,7 +262,7 @@ function BotSidebar({ profiles, offline, active, onNew, onChange }: { profiles: 
         {!profile.pinned && full && <span className="ml-auto text-xs text-muted-foreground">{maxPinned} are</span>}
       </ContextMenuItem>
       <ContextMenuCheckboxItem checked={profile.isDefault} onCheckedChange={(on) => void done(client.settings.update({ defaultProfile: on === true ? profile.id : "" }))}>
-        <HouseIcon />
+        <StarIcon />
         Default bot
       </ContextMenuCheckboxItem>
       <ContextMenuSeparator />

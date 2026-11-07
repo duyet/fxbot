@@ -11,7 +11,7 @@ Each release of fxbot, newest first. A release that adds migrations, bumps libfx
 - **A bot shows what it's doing.** It focuses and hops while it works, looks at you and bobs while a call waits on an answer, smiles when it finishes, and sleeps when it has no provider. Its head seems to turn as it watches the pointer, and a click gets a squish and a smile. With reduced motion on, it holds still.
 - **A new bot screen.** Pick from tabs for **Shape**, **Color**, **Feeling**, **Head**, **Face**, and **Body**, with each choice drawn on your bot, or tap **Surprise me**. It's the same in first-run setup, on a phone the bot and the tabs stay in view as you scroll, and **Change look** on a bot's edit page opens it with a **Save look** of its own.
 - **A bot's edit page keeps Save in view,** however long the page gets.
-- **A menu on each bot.** Right-click a bot in the sidebar, or hold it on a phone, to edit it, pin or unpin it, make it the default bot, or delete it.
+- **A menu on each bot.** Right-click a bot in the sidebar, or hold it on a phone, to edit it, pin or unpin it, make it the default bot, or delete it. The default bot wears a small star in the sidebar.
 - **Your own order for bots and rooms.** Drag one in the sidebar to move it, with a mouse, or with a finger after a moment's hold, so a swipe still scrolls. Pinned bots move among themselves. Chat rooms 0.3.1 orders rooms the same way.
 - **For plugins:** a page's `ui` has `useReorder`, the app's drag to reorder a list.
 - **Chat rooms 0.3.1, Messages 0.1.1, Permissions 0.1.1, and Pages 0.2.1** show each bot's whole look. Update them from **Plugins**.

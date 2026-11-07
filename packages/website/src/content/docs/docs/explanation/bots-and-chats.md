@@ -34,7 +34,7 @@ The sidebar lists your bots, with up to three pinned on top, larger. Drag a bot 
 
 ## The default bot
 
-One bot can be the default, picked in **Settings** › **General**, or with **Default bot** in its menu in the sidebar. Opening fxbot at its address then opens that bot's chat, where it left off, instead of the list of bots. A link to another screen opens that screen, and a reload stays where it was. Deleting the bot clears the choice.
+One bot can be the default, picked in **Settings** › **General**, or with **Default bot** in its menu in the sidebar, where it wears a small star. Opening fxbot at its address then opens that bot's chat, where it left off, instead of the list of bots. A link to another screen opens that screen, and a reload stays where it was. Deleting the bot clears the choice.
 
 ## Memories
 
