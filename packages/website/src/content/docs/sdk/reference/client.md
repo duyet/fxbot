@@ -50,6 +50,7 @@ Each call is one route of the [HTTP API](/sdk/reference/http-api/). They mirror 
 | `profiles.create(fields)` | `POST /api/profiles` | `Profile` |
 | `profiles.stop(id)` | `POST /api/profiles/<id>/stop` | `{ ok: true }` |
 | `profiles.update(id, fields)` | `PATCH /api/profiles/<id>` | `Profile` |
+| `profiles.order(ids)` | `PUT /api/profiles/order` | `Profile[]` |
 | `profiles.remove(id)` | `DELETE /api/profiles/<id>` | `{ ok: true }` |
 | `profiles.earlier(id)` | `GET /api/profiles/<id>/earlier` | `Turn[]` |
 | `profiles.skills(id)` | `GET /api/profiles/<id>/skills` | `BotSkill[]` |

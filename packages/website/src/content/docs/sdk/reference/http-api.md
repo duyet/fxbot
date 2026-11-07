@@ -141,6 +141,7 @@ A file's answer has these headers:
 | `POST` | `/api/profiles` | `name`, and any of `instructions`, `model`, `provider`, `shape`, `color`, `mood`, `head`, `face`, `outfit`, `tint` | 201 and `Profile` |
 | `GET` | `/api/profiles/<id>` | | `Profile` |
 | `PATCH` | `/api/profiles/<id>` | Any of the fields, and `pinned` | `Profile` |
+| `PUT` | `/api/profiles/order` | `ids`, bot ids in the owner's order | `Profile[]`, every bot in its new order. Bots it doesn't name keep theirs. Since 0.7.0. |
 | `DELETE` | `/api/profiles/<id>` | | `{ "ok": true }` |
 | `POST` | `/api/profiles/<id>/stop` | | `{ "ok": true }`. Stops the turn running in the bot's own chat, if one runs. Since 0.6.0. |
 | `GET` | `/api/profiles/<id>/earlier` | | `Turn[]`: the chats before the current one |

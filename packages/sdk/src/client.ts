@@ -148,6 +148,8 @@ export function createClient({ baseUrl = "", onVersion }: ClientOptions = {}) {
       get: (id: string) => call<Profile>(`/profiles/${id}`),
       create: (fields: Partial<Fields> & { name: string }) => call<Profile>("/profiles", "POST", fields),
       update: (id: string, fields: ProfileUpdate) => call<Profile>(`/profiles/${id}`, "PATCH", fields),
+      // The owner's order for some bots: the whole list comes back in its new order.
+      order: (ids: string[]) => call<Profile[]>("/profiles/order", "PUT", { ids }),
       // Stops the turn running in the bot's chat.
       stop: (id: string) => call<{ ok: true }>(`/profiles/${id}/stop`, "POST"),
       remove: (id: string) => call<{ ok: true }>(`/profiles/${id}`, "DELETE"),

@@ -69,7 +69,7 @@ export default async function setup(fx: PluginApi) {
   // fxbot 0.4 has no provide, and then the room works as before.
   fx.provide?.({
     roomOf: async (session: string) => (roomOf.has(session) ? await room(roomOf.get(session)!) : null),
-    rooms: async () => (await Promise.all((await fx.sql<{ id: number }[]>`select id from rooms order by id`).map((r) => room(r.id)))).filter(Boolean),
+    rooms: async () => (await Promise.all((await fx.sql<{ id: number }[]>`select id from rooms order by position nulls last, id`).map((r) => room(r.id)))).filter(Boolean),
   });
   const messages = (id: number) => fx.sql<Message[]>`select id, author, text, at, chain from messages where room = ${id} order by id`;
   async function say(id: number, author: string, text: string, chain: number | null = null) {
@@ -272,10 +272,17 @@ export default async function setup(fx: PluginApi) {
     return name.trim();
   };
 
-  // The rooms, each with the bot writing in it now, if one is.
+  // The rooms, in the owner's order, each with the bot writing in it now, if one is.
   fx.route("GET", "/rooms", async () => {
-    const rooms = await fx.sql<{ id: number }[]>`select id from rooms order by id`;
+    const rooms = await fx.sql<{ id: number }[]>`select id from rooms order by position nulls last, id`;
     return json(await Promise.all(rooms.map(async (r) => ({ ...(await room(r.id)), writing: replying.get(r.id)?.bot ?? null }))));
+  });
+  // The owner's order for rooms, which a drag in the sidebar sets. Rooms it doesn't name keep theirs.
+  fx.route("PUT", "/order", async (request) => {
+    const { ids } = (await request.json().catch(() => ({}))) as { ids?: unknown };
+    if (!Array.isArray(ids) || ids.length > 1000 || !ids.every((id) => Number.isInteger(id)) || new Set(ids).size !== ids.length) return json({ error: "ids must be a list of room ids, each once." }, 400);
+    await fx.sql`update rooms set position = x.n from unnest(${ids as number[]}::int[]) with ordinality as x(id, n) where rooms.id = x.id`;
+    return json({ ok: true });
   });
   fx.route("POST", "/rooms", async (request) => {
     try {

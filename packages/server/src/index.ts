@@ -248,6 +248,11 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL) {
     if (method === "POST") return json(res, 201, await fxbot.profiles.create(await body(req)));
     return fail(405, "method not allowed");
   }
+  // The owner's order for bots, which a drag in the sidebar sets.
+  if (id === "order" && !action) {
+    if (method === "PUT") return json(res, 200, await fxbot.profiles.order((await body<{ ids?: unknown }>(req)).ids));
+    return fail(405, "method not allowed");
+  }
   const profile = await fxbot.profiles.get(id);
 
   if (!action) {

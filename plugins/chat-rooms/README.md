@@ -16,6 +16,7 @@ A plugin for [fxbot](https://fxbot.sh): rooms where several of your bots talk wi
   - who woke it, and the replies left
 - **Skills:** three, `chat-room`, `room-handoff`, and `room-lead`, teach a bot how to work in a room. The room sends `chat-room` with a bot's first turn there, and `room-lead` with the lead's first untagged turn.
 - **Edit**, on a room, changes its name, its bots and their order, what an untagged message does, and its replies per message, or deletes it.
+- **Order:** drag a room in the sidebar to move it, with a mouse, or with a finger after a moment's hold. On fxbot before 0.7.0, rooms stay in the order they were made.
 
 Add it from **Plugins**, where fxbot's list has it. It runs inside fxbot: read its code there before you add it. Only bots it's on for can be in a room. See [Talk with several bots in a room](https://fxbot.sh/docs/how-to/talk-in-a-room/).
 

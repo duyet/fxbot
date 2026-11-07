@@ -7,6 +7,8 @@ import { Chip, Stack } from "./faces.jsx";
 import { tokens } from "./mentions.ts";
 
 const pathOf = (room) => `/chat-rooms/rooms/${room.id}`;
+// The app's drag to reorder, from fxbot 0.7.0. An older one keeps the rooms in the order they were made.
+const useReorder = ui.useReorder ?? (() => ({ list: undefined, item: () => ({}), cancel() {} }));
 
 // The rooms, shared by the sidebar and the screens, and read again after a change. `writing` is the bot writing in each
 // room now, from the list, then from the stream of the room that's open.
@@ -136,15 +138,21 @@ function RoomsGroup() {
     go(pathOf(room));
   };
   const who = (room) => room.members.map((id) => bots.find((bot) => bot.id === id)?.name ?? "a bot that's gone").join(", ");
+  // A drag shows its order at once, then saves it.
+  const rows = useReorder((ids) => {
+    rooms = ids.map((id) => list.find((room) => String(room.id) === id)).filter(Boolean);
+    tell();
+    call("/order", "PUT", { ids: ids.map(Number) }).then(reload, reload);
+  });
   return (
     <ui.SidebarGroup>
       <ui.SidebarGroupLabel>Rooms</ui.SidebarGroupLabel>
       <ui.SidebarGroupAction title="New room" aria-label="New room" onClick={() => setMaking(true)}>
         <Plus />
       </ui.SidebarGroupAction>
-      <ui.SidebarMenu>
+      <ui.SidebarMenu ref={rows.list}>
         {list?.map((room) => (
-          <ui.SidebarMenuItem key={room.id}>
+          <ui.SidebarMenuItem key={room.id} {...rows.item(String(room.id))} className="rounded-md select-none data-lifted:bg-sidebar-accent data-lifted:shadow-md">
             <ui.SidebarMenuButton asChild isActive={location.pathname === pathOf(room)}>
               <a href={pathOf(room)} title={who(room)} onClick={(event) => open(event, room)}>
                 <Stack ids={room.members} busy={writing.get(room.id)} />

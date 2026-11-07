@@ -24,6 +24,7 @@ import { ModelField } from "./providers.tsx";
 import { client } from "./client.ts";
 import { Header } from "./header.tsx";
 import { go } from "./nav.ts";
+import { useReorder } from "./reorder.ts";
 import { Reply } from "./steps.tsx";
 
 // Plugins' page code, loaded the way opencode loads it: the server serves each running plugin's prebuilt CommonJS
@@ -96,6 +97,7 @@ const ui = () => ({
   Blob,
   Reply,
   ModelField,
+  useReorder,
 });
 
 // `@fxbot/app` for one plugin: the client, its own routes, the app's navigation and bots, and the app's components.

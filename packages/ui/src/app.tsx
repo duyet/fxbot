@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
-import { ArrowUpIcon, CheckIcon, ChevronRightIcon, CopyIcon, FileTextIcon, LayoutDashboardIcon, MessageCircleDashedIcon, PanelRightIcon, PaperclipIcon, PinIcon, PinOffIcon, PlusIcon, PuzzleIcon, SettingsIcon, SquareIcon, XIcon } from "lucide-react";
+import { ArrowUpIcon, CheckIcon, ChevronRightIcon, CopyIcon, FileTextIcon, HouseIcon, LayoutDashboardIcon, MessageCircleDashedIcon, PanelRightIcon, PaperclipIcon, PencilIcon, PinIcon, PinOffIcon, PlusIcon, PuzzleIcon, SettingsIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { Attachment, AttachmentAction, AttachmentActions, AttachmentContent, AttachmentGroup, AttachmentMedia, AttachmentTitle, AttachmentTrigger } from "@/components/ui/attachment";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { maxPinned, unreachable, type Color, type Fields, type Profile, type Provider, type Shape, type Turn, type Upload } from "@fxbot/sdk/client";
 import { client } from "./client.ts";
+import { useReorder } from "./reorder.ts";
 import { maxFiles, readFile } from "./attachments.ts";
 import { Blob } from "./blob.tsx";
 import { BotForm } from "./bot-form.tsx";
@@ -218,10 +220,50 @@ function BotSidebar({ profiles, offline, active, onNew, onChange }: { profiles: 
   const blob = (profile: Profile, size: number, className = "") => (
     <Blob {...profile} size={size} follow={profile.id === active || profile.id === hovered} className={className} />
   );
-  const pin = (profile: Profile, pinned: boolean) => client.profiles.update(profile.id, { pinned }).then(() => (setProblem(""), onChange()), (e: Error) => setProblem(e.message));
-  // Pinned bots sit on top, large and centered; the rest are the list.
-  const pinned = profiles?.filter((p) => p.pinned) ?? [];
+  const done = (work: Promise<unknown>) => work.then(() => (setProblem(""), onChange()), (e: Error) => setProblem(e.message));
+  const pin = (profile: Profile, pinned: boolean) => done(client.profiles.update(profile.id, { pinned }));
+  // The order a drag left, shown until the list comes back with it.
+  const [moved, setMoved] = useState<Profile[] | null>(null);
+  useEffect(() => setMoved(null), [profiles]);
+  const shown = moved ?? profiles;
+  // Pinned bots sit on top, large and centered; the rest are the list. A drag orders either.
+  const pinned = shown?.filter((p) => p.pinned) ?? [];
+  const rest = shown?.filter((p) => !p.pinned) ?? [];
   const full = pinned.length >= maxPinned;
+  const reorder = (ids: string[]) => {
+    const byId = new Map((shown ?? []).map((p) => [p.id, p]));
+    const group = ids.map((id) => byId.get(id)!).filter(Boolean);
+    setMoved(group[0]?.pinned ? [...group, ...rest] : [...pinned, ...group]);
+    void done(client.profiles.order(ids));
+  };
+  const pins = useReorder(reorder, "x");
+  const rows = useReorder(reorder);
+  const remove = (profile: Profile) =>
+    confirm(`Delete ${profile.name}? Its library items stay in the library, and its conversation files stay on the server.`) &&
+    void done(client.profiles.remove(profile.id).then(() => profile.id === active && go("/")));
+  // What a right-click, or a long press, offers for a bot.
+  const menu = (profile: Profile) => (
+    <ContextMenuContent className="w-48">
+      <ContextMenuItem onSelect={() => (setOpenMobile(false), go(`/profiles/${profile.id}/edit`))}>
+        <PencilIcon />
+        Edit
+      </ContextMenuItem>
+      <ContextMenuItem disabled={!profile.pinned && full} onSelect={() => void pin(profile, !profile.pinned)}>
+        {profile.pinned ? <PinOffIcon /> : <PinIcon />}
+        {profile.pinned ? "Unpin" : "Pin"}
+        {!profile.pinned && full && <span className="ml-auto text-xs text-muted-foreground">{maxPinned} are</span>}
+      </ContextMenuItem>
+      <ContextMenuCheckboxItem checked={profile.isDefault} onCheckedChange={(on) => void done(client.settings.update({ defaultProfile: on === true ? profile.id : "" }))}>
+        <HouseIcon />
+        Default bot
+      </ContextMenuCheckboxItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem variant="destructive" onSelect={() => remove(profile)}>
+        <Trash2Icon />
+        Delete
+      </ContextMenuItem>
+    </ContextMenuContent>
+  );
   const newVersion = useNewVersion();
   const pluginNav = usePluginNav();
   return (
@@ -240,55 +282,63 @@ function BotSidebar({ profiles, offline, active, onNew, onChange }: { profiles: 
         {offline && <p className="px-4 text-sm text-destructive">{unreachable}</p>}
         {pinned.length > 0 && (
           <SidebarGroup aria-label="Pinned">
-            <div className="flex justify-center gap-1">
+            <div ref={pins.list} className="flex justify-center gap-1">
               {pinned.map((profile) => (
-                <div key={profile.id} className="group/pin relative w-24 min-w-0">
-                  <a
-                    href={`/profiles/${profile.id}`}
-                    onClick={open}
-                    {...watch(profile.id)}
-                    data-active={profile.id === active || undefined}
-                    className="grid justify-items-center gap-1.5 rounded-2xl px-1 pt-3 pb-2 hover:bg-sidebar-accent data-active:bg-sidebar-accent"
-                  >
-                    {/* Bigger than the list's 40, and three still fit across. */}
-                    {blob(profile, 64)}
-                    <span className="w-full truncate text-center text-sm">{profile.name}</span>
-                  </a>
-                  <button
-                    type="button"
-                    aria-label={`Unpin ${profile.name}`}
-                    onClick={() => pin(profile, false)}
-                    className="absolute top-1 right-1 grid size-6 place-items-center rounded-full bg-background text-muted-foreground shadow-sm transition-opacity group-hover/pin:opacity-100 hover:text-foreground focus-visible:opacity-100 md:opacity-0"
-                  >
-                    <PinOffIcon className="size-3.5" />
-                  </button>
-                </div>
+                <ContextMenu key={profile.id} onOpenChange={(opened) => opened && pins.cancel()}>
+                  <ContextMenuTrigger asChild>
+                    <div {...pins.item(profile.id)} className="group/pin relative w-24 min-w-0 rounded-2xl select-none data-lifted:bg-sidebar-accent data-lifted:shadow-md">
+                      <a
+                        href={`/profiles/${profile.id}`}
+                        onClick={open}
+                        {...watch(profile.id)}
+                        data-active={profile.id === active || undefined}
+                        className="grid justify-items-center gap-1.5 rounded-2xl px-1 pt-3 pb-2 hover:bg-sidebar-accent data-active:bg-sidebar-accent"
+                      >
+                        {/* Bigger than the list's 40, and three still fit across. */}
+                        {blob(profile, 64)}
+                        <span className="w-full truncate text-center text-sm">{profile.name}</span>
+                      </a>
+                      <button
+                        type="button"
+                        aria-label={`Unpin ${profile.name}`}
+                        onClick={() => void pin(profile, false)}
+                        className="absolute top-1 right-1 grid size-6 place-items-center rounded-full bg-background text-muted-foreground shadow-sm transition-opacity group-hover/pin:opacity-100 hover:text-foreground focus-visible:opacity-100 md:opacity-0"
+                      >
+                        <PinOffIcon className="size-3.5" />
+                      </button>
+                    </div>
+                  </ContextMenuTrigger>
+                  {menu(profile)}
+                </ContextMenu>
               ))}
             </div>
           </SidebarGroup>
         )}
         {problem && <p className="px-4 text-xs text-destructive">{problem}</p>}
         <SidebarGroup>
-          <SidebarMenu>
-            {profiles
-              ?.filter((p) => !p.pinned)
-              .map((profile) => (
-                <SidebarMenuItem key={profile.id}>
-                  <SidebarMenuButton asChild size="lg" isActive={profile.id === active} className="h-auto gap-3 py-2 pr-9">
-                    <a href={`/profiles/${profile.id}`} onClick={open} {...watch(profile.id)}>
-                      {/* size-10!: the sidebar button sizes every svg in it as an icon. */}
-                      {blob(profile, 40, "size-10!")}
-                      <span className="grid min-w-0 gap-0.5 leading-tight">
-                        <span className="truncate text-base">{profile.name}</span>
-                        <span className="truncate text-muted-foreground">{profile.preview ?? "No messages yet"}</span>
-                      </span>
-                    </a>
-                  </SidebarMenuButton>
-                  <SidebarMenuAction showOnHover aria-label={`Pin ${profile.name}`} title={full ? `Up to ${maxPinned} bots can be pinned` : undefined} disabled={full} onClick={() => pin(profile, true)} className="top-1/2! -translate-y-1/2 disabled:opacity-0">
-                    <PinIcon />
-                  </SidebarMenuAction>
-                </SidebarMenuItem>
-              ))}
+          <SidebarMenu ref={rows.list}>
+            {rest.map((profile) => (
+              <ContextMenu key={profile.id} onOpenChange={(opened) => opened && rows.cancel()}>
+                <ContextMenuTrigger asChild>
+                  <SidebarMenuItem {...rows.item(profile.id)} className="rounded-md select-none data-lifted:bg-sidebar-accent data-lifted:shadow-md">
+                    <SidebarMenuButton asChild size="lg" isActive={profile.id === active} className="h-auto gap-3 py-2 pr-9">
+                      <a href={`/profiles/${profile.id}`} onClick={open} {...watch(profile.id)}>
+                        {/* size-10!: the sidebar button sizes every svg in it as an icon. */}
+                        {blob(profile, 40, "size-10!")}
+                        <span className="grid min-w-0 gap-0.5 leading-tight">
+                          <span className="truncate text-base">{profile.name}</span>
+                          <span className="truncate text-muted-foreground">{profile.preview ?? "No messages yet"}</span>
+                        </span>
+                      </a>
+                    </SidebarMenuButton>
+                    <SidebarMenuAction showOnHover aria-label={`Pin ${profile.name}`} title={full ? `Up to ${maxPinned} bots can be pinned` : undefined} disabled={full} onClick={() => void pin(profile, true)} className="top-1/2! -translate-y-1/2 disabled:opacity-0">
+                      <PinIcon />
+                    </SidebarMenuAction>
+                  </SidebarMenuItem>
+                </ContextMenuTrigger>
+                {menu(profile)}
+              </ContextMenu>
+            ))}
           </SidebarMenu>
         </SidebarGroup>
         <Place pick={(places) => places.sidebar} props={{}} />

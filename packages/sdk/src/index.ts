@@ -782,6 +782,13 @@ export async function createFxbot(options: FxbotOptions) {
         const saved = (await store.profiles.update(id, { ...values, model: profile.model }))!;
         return withBusy((await (profile.sessionId ? switchProvider(saved, next, model) : store.profiles.update(id, { provider: next, model })))!);
       },
+      // The owner's order for some bots, such as the sidebar's list after a drag. Ids it doesn't know change nothing, and
+      // it answers the whole list in its new order.
+      async order(ids: unknown) {
+        if (!Array.isArray(ids) || ids.length > 1000 || !ids.every((one) => typeof one === "string") || new Set(ids).size !== ids.length) fail(400, "ids must be a list of bot ids, each once");
+        await store.profiles.order(ids as string[]);
+        return (await store.profiles.list()).map(withBusy);
+      },
       async remove(id: string) {
         await get(id);
         await stopTurns((turn) => turn.bot === id);

@@ -28,9 +28,13 @@ Up to 32 turns run at once, across all your bots, and a bot waiting on a long co
 
 To end a turn instead, press **Stop**, where the send button is while the box is empty. It doesn't wait for a running tool, and a command on the bot's computer stops too. Anything you sent that the bot hadn't read runs next, so nothing you wrote is lost.
 
+## The sidebar
+
+The sidebar lists your bots, with up to three pinned on top, larger. Drag a bot to move it, with a mouse, or with a finger after a moment's hold, so a swipe still scrolls. Pinned bots move among themselves, and a bot you pin or unpin goes to the end of its group. Right-click a bot, or hold it on a phone, for its menu: **Edit**, **Pin** or **Unpin**, **Default bot**, and **Delete**.
+
 ## The default bot
 
-One bot can be the default, picked in **Settings** › **General**. Opening fxbot at its address then opens that bot's chat, where it left off, instead of the list of bots. A link to another screen opens that screen, and a reload stays where it was. Deleting the bot clears the choice.
+One bot can be the default, picked in **Settings** › **General**, or with **Default bot** in its menu in the sidebar. Opening fxbot at its address then opens that bot's chat, where it left off, instead of the list of bots. A link to another screen opens that screen, and a reload stays where it was. Deleting the bot clears the choice.
 
 ## Memories
 

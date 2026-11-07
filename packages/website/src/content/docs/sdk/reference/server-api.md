@@ -11,10 +11,11 @@ Every call returns a promise, unless its row says it is synchronous. A call that
 
 | Call | What it does | Returns |
 | --- | --- | --- |
-| `profiles.list()` | Every bot: the pinned ones first, in the order they were pinned, then the rest by name. Each has `isDefault`, true for the bot a launch at `/` opens (Settings' `defaultProfile`). | `Profile[]` |
+| `profiles.list()` | Every bot: the pinned ones first, then the rest, each in the owner's order, and after it, in the order they were pinned, or by name. Each has `isDefault`, true for the bot a launch at `/` opens (Settings' `defaultProfile`). | `Profile[]` |
 | `profiles.get(id)` | One bot | `Profile` |
 | `profiles.create(fields)` | A new bot. Only `name` is required. `provider` defaults to Settings' `defaultProvider`. The first bot starts pinned. | `Profile` |
 | `profiles.update(id, update)` | Changes any of the fields, and `pinned` | `Profile` |
+| `profiles.order(ids)` | Sets the owner's order for the bots given, such as the sidebar's list after a drag. The others keep theirs, and ids it doesn't know change nothing. A bot that's pinned or unpinned goes to the end of its group. Since 0.7.0. | `Profile[]`, the whole list in its new order |
 | `profiles.stop(id)` | Stops the turn running in the bot's own chat, whoever started it. A message it hadn't read runs next. Since 0.6.0. | nothing |
 | `profiles.remove(id)` | Removes the bot, its messages, and its memories. Its library items stay, with `null` for the bot. Its libfx session stays in the database. | nothing |
 | `profiles.earlier(id)` | The bot's chats before its current one, which a provider switch leaves behind, as finished turns, oldest first: the newest 400 messages of them. `Turn` is the client's type. | `Turn[]` |

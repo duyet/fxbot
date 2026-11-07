@@ -42,8 +42,9 @@ export async function createStore({ databaseUrl, dataDir, backupsDir }: MigrateO
     // Whether this start backed up before migrating.
     backedUp,
     profiles: {
-      // Pinned bots first, in the order they were pinned, then the rest by name.
-      list: async (): Promise<StoredProfile[]> => sql<StoredProfile[]>`select ${columns} from profiles order by pinned_at nulls last, lower(name), id`,
+      // Pinned bots first, then the rest, each in the owner's order, and those without one in the order they were pinned,
+      // or by name.
+      list: async (): Promise<StoredProfile[]> => sql<StoredProfile[]>`select ${columns} from profiles order by pinned_at is null, position nulls last, pinned_at, lower(name), id`,
       get: async (id: string) => profile(await sql<StoredProfile[]>`select ${columns} from profiles where id = ${id}`),
       create: async (fields: Fields) =>
         profile(await sql<StoredProfile[]>`insert into profiles (id, name, instructions, provider, model, shape, color, mood, head, face, outfit, tint, pinned_at)
@@ -59,12 +60,15 @@ export async function createStore({ databaseUrl, dataDir, backupsDir }: MigrateO
       // A concurrent first send keeps the id already saved.
       claimSession: async (id: string, sessionId: string) =>
         profile(await sql<StoredProfile[]>`update profiles set session_id = coalesce(session_id, ${sessionId}) where id = ${id} returning ${columns}`),
-      // A pinned bot keeps its place. A new pin needs a free one of the `maxPinned`, checked in the same statement.
+      // A pinned bot keeps its place. A new pin needs a free one of the `maxPinned`, checked in the same statement. A bot
+      // that's pinned or unpinned goes to the end of its group, leaving its place in the other.
       pin: async (id: string, pinned: boolean) =>
         pinned
-          ? (await sql`update profiles set pinned_at = coalesce(pinned_at, now()) where id = ${id}
+          ? (await sql`update profiles set position = case when pinned_at is null then null else position end, pinned_at = coalesce(pinned_at, now()) where id = ${id}
               and (pinned_at is not null or (select count(*) from profiles where pinned_at is not null) < ${maxPinned}) returning id`).length > 0
-          : (await sql`update profiles set pinned_at = null where id = ${id}`, true),
+          : (await sql`update profiles set position = case when pinned_at is null then position else null end, pinned_at = null where id = ${id}`, true),
+      // The owner's order for the bots given, from 1. The others keep theirs.
+      order: async (ids: string[]) => void (await sql`update profiles set position = x.n from unnest(${ids}::text[]) with ordinality as x(id, n) where profiles.id = x.id`),
       remove: async (id: string) => void (await sql`delete from profiles where id = ${id}`),
       usingProvider: async (provider: string) => Number((await sql`select count(*) from profiles where provider = ${provider}`)[0].count),
     },

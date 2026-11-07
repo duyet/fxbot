@@ -9880,6 +9880,11 @@ function Composer({ bots, placeholder, disabled, onSend, submitRef, onEmpty }) {
 }
 // fxbot/page.jsx
 const pathOf = (room) => `/chat-rooms/rooms/${room.id}`;
+const useReorder = _fxbot_app.ui.useReorder ?? (() => ({
+	list: void 0,
+	item: () => ({}),
+	cancel() {}
+}));
 let rooms = null;
 const writing = new Map();
 const listeners = new Set();
@@ -10025,6 +10030,11 @@ function RoomsGroup() {
 		(0, _fxbot_app.go)(pathOf(room));
 	};
 	const who = (room) => room.members.map((id) => bots.find((bot) => bot.id === id)?.name ?? "a bot that's gone").join(", ");
+	const rows = useReorder((ids) => {
+		rooms = ids.map((id) => list.find((room) => String(room.id) === id)).filter(Boolean);
+		tell();
+		call("/order", "PUT", { ids: ids.map(Number) }).then(reload, reload);
+	});
 	return (0, react_jsx_runtime.jsxs)(_fxbot_app.ui.SidebarGroup, { children: [
 		(0, react_jsx_runtime.jsx)(_fxbot_app.ui.SidebarGroupLabel, { children: "Rooms" }),
 		(0, react_jsx_runtime.jsx)(_fxbot_app.ui.SidebarGroupAction, {
@@ -10033,22 +10043,29 @@ function RoomsGroup() {
 			onClick: () => setMaking(true),
 			children: (0, react_jsx_runtime.jsx)(Plus, {})
 		}),
-		(0, react_jsx_runtime.jsx)(_fxbot_app.ui.SidebarMenu, { children: list?.map((room) => (0, react_jsx_runtime.jsx)(_fxbot_app.ui.SidebarMenuItem, { children: (0, react_jsx_runtime.jsx)(_fxbot_app.ui.SidebarMenuButton, {
-			asChild: true,
-			isActive: location.pathname === pathOf(room),
-			children: (0, react_jsx_runtime.jsxs)("a", {
-				href: pathOf(room),
-				title: who(room),
-				onClick: (event) => open(event, room),
-				children: [(0, react_jsx_runtime.jsx)(Stack, {
-					ids: room.members,
-					busy: writing.get(room.id)
-				}), (0, react_jsx_runtime.jsx)("span", {
-					className: "truncate",
-					children: room.name
-				})]
-			})
-		}) }, room.id)) }),
+		(0, react_jsx_runtime.jsx)(_fxbot_app.ui.SidebarMenu, {
+			ref: rows.list,
+			children: list?.map((room) => (0, react_jsx_runtime.jsx)(_fxbot_app.ui.SidebarMenuItem, {
+				...rows.item(String(room.id)),
+				className: "rounded-md select-none data-lifted:bg-sidebar-accent data-lifted:shadow-md",
+				children: (0, react_jsx_runtime.jsx)(_fxbot_app.ui.SidebarMenuButton, {
+					asChild: true,
+					isActive: location.pathname === pathOf(room),
+					children: (0, react_jsx_runtime.jsxs)("a", {
+						href: pathOf(room),
+						title: who(room),
+						onClick: (event) => open(event, room),
+						children: [(0, react_jsx_runtime.jsx)(Stack, {
+							ids: room.members,
+							busy: writing.get(room.id)
+						}), (0, react_jsx_runtime.jsx)("span", {
+							className: "truncate",
+							children: room.name
+						})]
+					})
+				})
+			}, room.id))
+		}),
 		list?.length === 0 && (0, react_jsx_runtime.jsx)("p", {
 			className: "px-2 text-xs text-muted-foreground",
 			children: "Talk with several bots at once."
