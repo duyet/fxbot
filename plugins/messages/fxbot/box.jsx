@@ -248,8 +248,9 @@ export function Box({ bot, value, onChange, onKeyDown, onPaste, onFocus, onBlur,
     refresh(v.state);
   }, [value]);
 
-  // Its role and state for assistive technology, the app's, or the list's while that's open.
-  useEffect(() => {
+  // Its role and state for assistive technology, the app's, or the list's while that's open, and its classes. Set before
+  // the page paints, so the box has its padding and line height from the start, for anything that measures it.
+  useLayoutEffect(() => {
     const attributes = { role: "combobox", "aria-multiline": "true", "data-slot": "input-group-control", class: `fm-editor ${className ?? ""}`, ...aria };
     if (list) Object.assign(attributes, { "aria-expanded": "true", "aria-controls": "tag-picker", "aria-activedescendant": `tag-option-${list.active}` });
     else attributes["aria-expanded"] = String(Boolean(aria["aria-expanded"]));

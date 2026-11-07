@@ -603,9 +603,10 @@ function Chat({ id, profiles, onChange, onShown }: { id: string; profiles: Profi
   // A bot with no provider cannot send: it points to Settings instead of offering the composer.
   const stuck = !profile || !profile.provider;
 
-  // The box starts one line tall and grows with its text up to its max height, where it scrolls.
+  // The box starts one line tall and grows with its text up to its max height, where it scrolls. Only the app's textarea:
+  // a plugin's box grows on its own, and one measured as it mounts, before its styles, would keep a height too short.
   useLayoutEffect(() => {
-    if (!box.current) return;
+    if (!(box.current instanceof HTMLTextAreaElement)) return;
     box.current.style.height = "auto";
     box.current.style.height = `${box.current.scrollHeight}px`;
   }, [draft]);

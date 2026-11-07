@@ -9832,7 +9832,7 @@ function Box({ bot, value, onChange, onKeyDown, onPaste, onFocus, onBlur, placeh
 		v.updateState(stateOf(value ?? ""));
 		refresh(v.state);
 	}, [value]);
-	(0, react.useEffect)(() => {
+	(0, react.useLayoutEffect)(() => {
 		const attributes = {
 			role: "combobox",
 			"aria-multiline": "true",
