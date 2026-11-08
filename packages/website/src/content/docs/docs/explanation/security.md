@@ -29,7 +29,7 @@ The page's code carries no credentials, and its build reads no `.env`.
 
 ## Files served as data
 
-The library serves what chats hold as data, never as a page. Images are checked from their bytes. Documents are served as plain text, with `nosniff` and a sandbox that runs nothing, even opened in a tab of their own. HTML and SVG are never served as themselves.
+The library serves what chats hold as data, never as a page. Images are checked from their bytes. Documents are served as plain text, with `nosniff` and a sandbox that runs nothing, even opened in a tab of their own. The library never serves HTML or SVG as themselves. The Pages plugin runs a bot's HTML page in a sandboxed frame of its own, as [Keep what a bot writes](/docs/how-to/keep-what-a-bot-writes/) describes.
 
 ## Vetted plugins
 

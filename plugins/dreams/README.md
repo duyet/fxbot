@@ -2,7 +2,7 @@
 
 A plugin for [fxbot](https://fxbot.sh): each night, a bot goes over its day. It saves what's worth remembering, and when the day showed a way of working that worked, it writes it down as a skill. A journal in the bot's settings shows each change, with **Undo**.
 
-Add it from **Plugins**, where fxbot's list has it. It runs inside fxbot: read its code there before you add it. It needs fxbot 0.5.0 or newer, for `fx.memories` and `fx.skills.set`. See [Let bots dream](https://fxbot.sh/docs/how-to/let-bots-dream/).
+Add it from **Plugins**, where fxbot's list has it. It runs inside fxbot: read its code there before you add it. It needs fxbot 0.6.0 or newer, for `fx.memories`, `fx.skills.set`, and your time zone. See [Let bots dream](https://fxbot.sh/docs/how-to/let-bots-dream/).
 
 ## A night
 

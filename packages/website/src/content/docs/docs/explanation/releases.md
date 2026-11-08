@@ -17,6 +17,12 @@ The [changelog](/docs/reference/changelog/) and each release's notes are written
 
 An install stays on its release until someone chooses the next one. fx, which fxbot takes after, updates itself by default. fxbot doesn't: you update when you are ready. Once a day, the server asks GitHub for the newest release, and **Settings** › **About** shows its notes and an **Update** button. `FXBOT_UPDATE_CHECK=off` stops the asking. Prereleases install only by name, so nobody lands on one by accident.
 
+## Plugins move on their own
+
+A plugin isn't part of a release. fxbot checks each one's repository every hour, and offers an update when its files change, whatever release the install runs. fxbot's own plugins live in fxbot's repository, so they change as soon as its `main` does, often before an install has updated fxbot itself.
+
+So each plugin with code says the oldest fxbot it runs on, as `minFxbot` in its `plugin.json`. An older install shows **Needs fxbot** for a version it can't run, and keeps the one it has. The other way round, when a release breaks something plugins use, fxbot.sh lists it in `plugin-breaks.json`, and a plugin it would break stops as **Unsupported**, rather than breaking a bot halfway through a turn. Its files, settings, and tables stay until a version that fits arrives. Since 0.7.0.
+
 ## An image per release
 
 An install runs three containers, from the release's compose file: the app, from fxbot's image for that version, its database, from pgvector's Postgres image, and the local embedder for memory search, from llama.cpp's server image, unless it's turned off. Every machine then runs the same Node, the same Postgres, and pgvector, whatever its distro ships. `/opt/fxbot/.env` names the version that runs.

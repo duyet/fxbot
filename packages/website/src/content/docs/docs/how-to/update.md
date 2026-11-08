@@ -9,7 +9,7 @@ First, read the release's section of the [changelog](/docs/reference/changelog/)
 
 ## From Settings
 
-When a newer release is out, **Settings** › **About** shows its notes and an **Update** button. Choose it. The machine's `fxbot` command downloads the release, gives running chats 30 seconds to finish, and starts it, where any chat still running goes on, while the database keeps running. Settings shows each step, and the page reloads onto the new version once it answers.
+When a newer release is out, **Settings** › **About** shows its notes and an **Update** button. If a plugin you run wouldn't run on it, a line above the button names it, as "Won't run on 0.8.0: …". Look for a newer version of that plugin first, or update anyway and it shows as **Unsupported** ([When it goes differently](/docs/how-to/add-a-plugin/#when-it-goes-differently)). Choose **Update**. The machine's `fxbot` command downloads the release, gives running chats 30 seconds to finish, and starts it, where any chat still running goes on, while the database keeps running. Settings shows each step, and the page reloads onto the new version once it answers.
 
 ## From a shell
 

@@ -85,7 +85,7 @@ const steps: { title: string; command?: string; body: ReactNode }[] = [
     ),
   },
   { title: "Install the app", body: <>Open fxbot on each device. Install it from Settings in Chrome or Edge, or with Share, then Add to Home Screen, on an iPhone.</> },
-  { title: "Add a provider and a bot", body: <>In Settings, sign in to an account, add a key, or point at a local model server. Then make a bot and start a chat.</> },
+  { title: "Set it up", body: <>The first time it opens, it walks you through plugins, a provider and a model, and your first bot: sign in to an account, add a key, or point at a local model server. Then it opens your bot's chat.</> },
 ];
 
 // A first look at the SDK, as on its overview page.

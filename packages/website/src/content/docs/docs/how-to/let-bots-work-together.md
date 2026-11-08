@@ -50,7 +50,7 @@ A message to an idle bot is one turn of that bot, with its whole chat as context
 
 ## Who can ask whom
 
-Any bot the plugin is on for can message any other it's on for, and ask it to act. The one that gets the message has all its tools. It's told that a bot's words are a colleague's request, and that what it would ask you about first, another bot can't OK. When your message started the work, it also gets your own words, quoted by fxbot from the chat where you said them, which no bot can write. So it knows the request is yours, and can tell when a bot asks for more than you did, and so does each bot after it. To keep a bot out of this, turn the plugin off for it in **Settings** › **Messages**. To have a bot ask you before it acts on a colleague's word, see [Choose what a bot can do alone](/docs/how-to/choose-what-a-bot-can-do-alone/).
+Any bot the plugin is on for can message any other it's on for, and ask it to act. The one that gets the message has all its tools. It's told that a bot's words are a colleague's request, and that what it would ask you about first, another bot can't OK. When your message started the work, it also gets your own words, quoted by fxbot from the chat where you said them. So it knows the request is yours, and can tell when a bot asks for more than you did, and so does each bot after it. To keep a bot out of this, turn the plugin off for it in **Settings** › **Messages**. To have a bot ask you before it acts on a colleague's word, see [Choose what a bot can do alone](/docs/how-to/choose-what-a-bot-can-do-alone/).
 
 ## Set its limits
 

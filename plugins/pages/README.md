@@ -52,10 +52,11 @@ For what Markdown can't do, such as a chart with filters, or a designed layout. 
 
 It runs in a frame, from `/api/plugins/pages/<id>/versions/<n>/frame`, in a sandbox with no same-origin access, inside a small `shell` page. Everything is inline, so a bot draws charts itself, and `library:<id>` images are embedded before it's served, from the bot's own library.
 
-- What you do with its controls isn't saved, and a reload clears it.
+- What you do with its controls stays only where the page saves it, with `fxpage.set`. The rest clears on a reload.
 - A link shows its whole address in a bar above the page, and **Open** opens it in a tab.
 - **Open in a tab** opens the page alone, to print. It has no line to fxbot there, so it shows no saved things or data.
 - A page's errors show below it, with **Tell the bot**. Nothing reaches a bot by itself.
+- In the library, an HTML page shows its source, and doesn't run.
 
 `shim.js` goes first in each page, and is its line to the reader. A page gets:
 
@@ -75,7 +76,6 @@ Every check is on the reader's side, and a page's id and version come from the r
 **Data needs your approval.** A page with code can send what it holds elsewhere, so a bot's data reaches one only if you approved that page's exact text. `pages_data` on a page you haven't approved keeps the value waiting, and a bar on the page asks you. **Allow** approves that text, and the value arrives, with nothing to run again. New text asks again.
 
 **What a page says** goes to the bot's own chat only when you press **Send**, marked as from the page. It's a plugin's turn, not your word, so a risky tool still asks. Text that starts with `/` is refused, and so is text over 4,000 characters.
-- In the library, an HTML page shows its source, and doesn't run.
 
 ## Tables
 

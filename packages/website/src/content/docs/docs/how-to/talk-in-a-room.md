@@ -27,6 +27,8 @@ While bots answer, the room shows who's writing and who's next. **Stop** ends th
 
 **Edit**, at the top of a room, changes its name, its bots and their order, what a message that tags no one does, and the bot replies per message. **Delete room** deletes the room and what was said in it.
 
+To move a room in the sidebar, drag it, with a mouse, or with a finger after a moment's hold. Rooms keep the order you leave them in. Needs fxbot 0.7.0.
+
 Only bots that chat rooms is on for can be in a room. To give it to some bots only, see [Add a plugin](/docs/how-to/add-a-plugin/).
 
 A room can also have a computer of its own, which its bots share: see [Give a room a computer](/docs/how-to/give-bots-a-computer/#give-a-room-a-computer).
