@@ -65,11 +65,13 @@ This one matters most. An owner's update runs this release's migrations on the d
    ```
 
    Make the data and backup folders first.
-2. **Run the last release.** In `$T/old`, run `npm ci && npm run build`. Start `npm run server` in the background, and save its PID. Wait for the API to answer.
+2. **Run the last release.** In `$T/old`, run `npm ci && npm run build`. Start the server in the background, and save the PID of `node` itself, not of a shell around it: `cd "$T/old"; <variables> nohup node packages/server/src/index.ts > old.log 2>&1 & echo $! > old.pid`. In `( cd X && nohup node … & )`, `$!` is the subshell's, and a stop by it misses the server. Refuse to start on a port something already holds. Wait for the API to answer.
+
+   Give it the plugins whose tables this release's plugin migrations change, from `$T/old/plugins/`, each copied into a folder of its own under `$T/live/<name>` that stays the same in step 5. fxbot knows a local plugin by its folder, so the old and new copies in two folders look like two plugins, and no plugin migration runs.
 3. **Seed what this release's migrations touch,** through the HTTP API in `packages/website/src/content/docs/sdk/reference/http-api.md`. Use what that release has: settings, a provider pointed at an address that isn't real, a few bots, and anything else the new migrations alter, such as a pinned bot or a room. Note what you created.
 4. **Stop the old server** by its PID, and make sure it exited.
-5. **Start this release** from `$T/new` on the same database, and save its PID. Then check:
-   - The server's log shows the backup, then each new migration. It shows no errors.
+5. **Start this release** from `$T/new` on the same database, after replacing each folder under `$T/live/` with the plugin's files from `$T/new/plugins/`, as an update would. Save its PID. Then check:
+   - The server's log shows the backup, then each new migration, core and plugin. It shows no errors.
    - `podman exec fxbot-prep-db psql -U fxbot -d fxbot -c 'select id from fxbot_migrations order by id'` lists them all.
    - Everything you seeded comes back from the API, with sensible values in the new fields.
    - What **Before upgrading** promises is true. For example, an install with a bot doesn't get first-run setup.
@@ -79,7 +81,8 @@ This one matters most. An owner's update runs this release's migrations on the d
 
 Changed plugins reach owners still on the last release as soon as `main` moves. So run them on both releases.
 
-- On the new server, set `FXBOT_PLUGIN_DIRS` to all of `$T/new/plugins/*`, joined with `:`. Run `npm ci` first in each one that has a lockfile.
+- **Leave out `computer`, and `chat-rooms-computer`, which needs it, when the server runs as root.** With no engine set, `computer` runs its own engine-setup script, which changes the machine. Report them as not run, with that reason.
+- On the new server, set `FXBOT_PLUGIN_DIRS` to the rest of `$T/new/plugins/*`, joined with `:`, on a fresh database. Run `npm ci` first in each one that has a lockfile and imports a package in its `server.ts`.
   - Every plugin starts, with no **Unsupported**.
   - Each plugin's tab in Settings loads without a page error.
 - On the old server, with the same folders:
