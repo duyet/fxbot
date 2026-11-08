@@ -51,6 +51,7 @@ In order of execution priority. Checked phases are built. Each is marked **core*
 - [x] [Pages](docs/_completed/phases/pages.md) (plugin, with small core hooks; 0.7.0): reports and guides bots write for reading outside the chat, in Markdown or HTML, kept in the library with every version
 - [x] [Pages v2](docs/_completed/phases/pages-v2.md) (plugin; 0.7.0): pages that remember, that bots can feed with data, and that reach back to the bot
 - [x] [Avatars](docs/_completed/phases/avatars.md) (core; 0.7.0): a look for each bot, of 32 shapes in soft color with big dark eyes, a feeling, and things to wear, that shows when it's working, waiting, finished, or asleep
+- [ ] [Web pairing](docs/phases/web-pairing.md) (plugin, with two small hooks; 0.8.0): web.fxbot.sh opens your own fxbot from a phone or any computer over a WebRTC connection straight to it, with only the handshake passing through fxbot.sh, paired once with a code and kept
 - [ ] [Operations](docs/phases/operations.md) (core): the computer on every engine, `setup.sh` checks before it changes anything, and `fxbot backup` and `fxbot uninstall`
 - [ ] [Distribution](docs/phases/distribution.md) (core): the main install, one download for Linux, macOS, and Windows that brings its own Postgres and embedder and a Linux machine for the computer, and later the desktop app; the container release is for hosting
 - [ ] [Triggers](docs/phases/triggers.md) (plugins): webhooks and new email start a bot's turn
