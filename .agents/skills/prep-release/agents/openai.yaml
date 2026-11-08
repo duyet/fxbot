@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prep Release"
+  short_description: "Review, document, and check a release branch before it's cut"
+  default_prompt: "Use $prep-release to get the open release branch ready to cut."
