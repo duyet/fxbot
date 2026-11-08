@@ -51,6 +51,7 @@ In order of execution priority. Checked phases are built. Each is marked **core*
 - [x] [Pages](docs/_completed/phases/pages.md) (plugin, with small core hooks; 0.7.0): reports and guides bots write for reading outside the chat, in Markdown or HTML, kept in the library with every version
 - [x] [Pages v2](docs/_completed/phases/pages-v2.md) (plugin; 0.7.0): pages that remember, that bots can feed with data, and that reach back to the bot
 - [ ] [Operations](docs/phases/operations.md) (core): the computer on every engine, `setup.sh` checks before it changes anything, and `fxbot backup` and `fxbot uninstall`
+- [ ] [Distribution](docs/phases/distribution.md) (core): one download for Linux, macOS, and Windows that brings its own Postgres and embedder, a Linux machine for the computer, and later an Electron app
 - [ ] [Triggers](docs/phases/triggers.md) (plugins): webhooks and new email start a bot's turn
 - [ ] [Soul](docs/phases/soul.md) (plugin): a written persona behind each bot's system prompt
 - [ ] [Context management](docs/phases/context-management.md) (core): one never-ending chat that fits the model's context window, past the compaction libfx does
