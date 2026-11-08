@@ -9,9 +9,11 @@ fxbot as one download per OS that brings everything it needs. The owner doesn't 
   - On Windows, a WSL2 distro of its own, with one admin prompt and a restart, only when WSL is off.
   - On Linux, today's rootless engine and firewall, with root once.
 - **Electron wraps the same folder later:** a window, a tray icon, start at login, signed installers, and updates.
-- **The container release stays,** for servers, and for anyone who already runs it.
+- **Two installs, each for its own use:**
+  - **The app is the install the site offers first,** for fxbot on the owner's own computer. The desktop app takes its place once it's built.
+  - **The container release is for hosting:** an fxbot that's always on, reached from the owner's other devices, and not tied to a laptop or a desktop.
 
-Status: planned on 2026-11-08, on `release/0.7.0`, not built. Researched the same day:
+Status: planned on 2026-11-08, on `release/0.7.0`, not built and not scheduled, since other work comes first. The owner's decisions on the plan are under **What the owner asked**. Researched the same day:
 - against the research directive's references
 - against desktop apps that bring their own database, embedder, or VM: OpenBot's desktop app, Jan, Open WebUI Desktop, Docker Desktop, Podman Desktop, Rancher Desktop, and Claude Desktop
 - against the docs, releases, and source of PGlite, embedded-postgres, the theseus-rs Postgres builds, Node's single executables, Bun, Electron, Lima, vfkit, libkrun, WSL, and llama.cpp
@@ -34,9 +36,19 @@ Nothing was run on a Mac or on Windows. Where this plan says *likely*, it wasn't
 
 "So folks don't require to have system level docker/postgres/podman etc on their machines..."
 
+After reading the plan:
+- "the app is main install people see when they come to site, and in future the desktop app becomes it."
+- "the container install comes when people want to host a version and access it from other devices and have it long living not tied to their desktop/laptop etc..."
+- "I'll hold signing for electron etc..."
+
+So:
+- **The app is the main install.** It's the one line the site and the README lead with, and the desktop app (M5) replaces it there once it's built.
+- **The container release is for hosting,** and the docs send anyone who wants an always-on fxbot, reached from other devices, there.
+- **Signing waits for Electron.** Until then, the one-line install keeps macOS and SmartScreen from asking (see The download).
+
 ## 0. Core or plugin
 
-**Core: what fxbot needs to run** ([Core or plugin](../../CONVENTIONS.md#core-or-plugin)). This is install and updates, in a second shape beside the container release. Almost all of it is packaging:
+**Core: what fxbot needs to run** ([Core or plugin](../../CONVENTIONS.md#core-or-plugin)). This is install and updates, in a second shape beside the container release, and the one the site offers first. Almost all of it is packaging:
 - the `fxbot` command, in `deploy/app/`, beside the release's `deploy/fxbot`
 - the release workflow's builds
 - later, an Electron shell in `deploy/desktop/`
@@ -318,7 +330,7 @@ A VM per bot (microsandbox, Docker's `sbx`, Apple's `container`) would add a ker
    - **Everywhere:** the computer's own `setup.sh` runs inside the machine unchanged, and the plugin keeps speaking the Docker API to one socket.
 8. **Nothing downloads before it's needed.** The base download is 110–150 MB per OS, before trimming Postgres. The embedder's model downloads on the first start, and the computer's machine when the computer is added. A plugin that isn't added costs nothing.
 9. **Electron is a shell around the same folder.** It spawns the folder's own `fxbot`, and opens `http://127.0.0.1:8787` in a window. Updates move to electron-updater, and signing costs $99 a year for Apple and about $10 a month for Windows.
-10. **Keep the container release.** It's the checked path for servers, Ubuntu 22.04 included, and its data moves to the app and back with `pg_dump`, since both run Postgres 17.
+10. **The app is the main install, and the container release is for hosting.** The site leads with the app, and later with the desktop app. The container release is for an fxbot that's always on and reached from other devices, on a server, Ubuntu 22.04 included. Data moves between the two with `pg_dump`, since both run Postgres 17.
 
 ## 3. Implementation
 
@@ -512,13 +524,11 @@ It downloads the computer's script from the release, as `deploy/fxbot:302` does 
 - **Without one:** Settings shows the `sudo` command, as the computer's section does now (`server.ts:997`).
 - **The socket** is where the script puts it, `/var/lib/fxbot-computer/run/engine.sock`, which the plugin already looks for. The operations phase's engine fix lets this work wherever podman comes from apt.
 
-### Linux as a server
+### Hosting is the container release's
 
-The same download runs headless:
-1. Run `fxbot autostart on`, then `loginctl enable-linger`, so the user unit runs without a login. *Likely* allowed for the user's own account without a password, by logind's default policy.
-2. Tailscale reaches `127.0.0.1:8787` as now.
+An fxbot that's always on, reached from the owner's other devices, and not tied to a laptop or a desktop is the container release's job. The operations phase improves that install.
 
-The container release stays the documented server install, and the operations phase keeps improving it.
+The app doesn't take this on. It runs while its owner is logged in, at the computer's own loopback, and gets no headless mode: no lingering user unit, and no service for a machine nobody logs in to. An owner who outgrows it moves to the container release with `fxbot backup` and `fxbot restore`.
 
 ### Building it
 
@@ -551,13 +561,15 @@ A shell in `deploy/desktop/`, about 200 lines, outside the workspaces as plugins
 
 ### The docs
 
+- **The tutorial, "Your first fxbot"** (`tutorials/first-fxbot.md`), starts from the app: the one line, `fxbot`, a provider, and a first chat.
 - **New how-to pages:**
-  - **Install fxbot on your computer:** the download for each OS, `fxbot`, start at login, and where the data is.
-  - **Move to the app from the container release, and back:** `fxbot backup` on one side, and `fxbot restore` on the other.
+  - **Host fxbot on a server:** today's `setup.sh` steps, for an fxbot that's always on and reached from other devices, with **Reach it** (`how-to/reach-it.md`) after them.
+  - **Move between the app and a hosted fxbot:** `fxbot backup` on one side, and `fxbot restore` on the other, both ways.
 - **Changed:**
   - **The computer's page:** the machine by OS, and Windows' one admin step.
-  - **The README:** an Install section with both ways.
-  - **The home page:** the app's one line for each OS, beside the release install's `curl` line, at `src/home.tsx:77`.
+  - **The README:** an Install section that leads with the app, then **Host it** with the container release.
+  - **The home page:** its first step, "Install it" (`src/home.tsx:77`), is the app's one line, by OS. The container release's `curl` line moves under **Host it**, for an fxbot that's always on.
+  - **"What setup.sh creates"** stays, under the hosting pages.
   - **`CHANGELOG.md`:** under `## Unreleased`.
 
 ### Cost
@@ -584,7 +596,7 @@ A shell in `deploy/desktop/`, about 200 lines, outside the workspaces as plugins
 - **Ubuntu 22.04 and older glibc:** these would need a Postgres build of fxbot's own on an older base.
 - **FreeBSD and other Unixes:** there are no libfx or Postgres builds for them.
 - **Postgres 18.**
-- **Retiring the container release.**
+- **A headless app.** Hosting is the container release's.
 - **The operations phase's Mac page,** which puts all of fxbot in a Lima VM. The app replaces it once it ships, and until then it stays the Mac route.
 
 ### What changes
@@ -644,7 +656,7 @@ Each milestone ships on its own. Check on this machine where it can be, and on a
 - [ ] Windows: the WSL step, the distro, the setup, `win-sshproxy`'s pipe, and the same three checks.
 
 **M4. Docs**
-- [ ] The two new pages, the three changed ones, `npm run build-site`, and `CHANGELOG.md`.
+- [ ] The tutorial from the app, the two new pages, the changed ones (the home page leads with the app, and the container release's line is under **Host it**), `npm run build-site`, and `CHANGELOG.md`.
 
 **Human checks**
 - [ ] A Mac on Apple silicon and an Intel Mac: unpack, `fxbot`, a chat, a memory search, the computer, an update, and `uninstall --purge`.
@@ -654,15 +666,16 @@ Each milestone ships on its own. Check on this machine where it can be, and on a
 **M5. Electron (a later release)**
 - [ ] The shell in `deploy/desktop/`: the window, the tray, start at login, and an MCP sign-in in the system browser.
 - [ ] electron-builder's installers for the three OSes, electron-updater from one test release to the next, and Settings' **Update** through the shell.
-- [ ] Signed and notarized on a Mac, signed on Windows, and the computer's VM starting from the signed app.
+- [ ] Signed and notarized on a Mac, signed on Windows, and the computer's VM starting from the signed app. Signing waits for this milestone, by the owner's decision.
+- [ ] The site and the README lead with the desktop app in place of the one-line install.
 
 ## 5. Open questions
 
-1. **Is the app the main way in, or a second one?** The default is a second one: the container release stays the documented server install, and the app is for a laptop or a desktop. The alternative is to make the app the one install and retire compose, which means one path to check, but a server without systemd user units and linger loses its restarts.
-2. **Postgres 17 or 18 in the app?** The default is 17, the container release's, so a backup restores in either direction, and an owner can move between them both ways. 18 is the newest, and what pglite and embedded-postgres carry. Moving both to 18 later means `pg_upgrade`, or a dump and a restore, as its own change.
-3. **Node 24 or 26?** The default is Node 24.22, Electron 45's own: JSPI is on, and it's supported to April 2028. Node 26 is the current LTS and refuses the old JSPI flag, which fxbot never passes. Either works.
-4. **Lima on a Mac, or vfkit?** The default is Lima: socket forwarding, cloud images, and Intel support, ready-made, for 38–50 MB. vfkit is one program, but fxbot would build its own disk image and vsock relay.
-5. **`win-sshproxy` on Windows, or a relay of fxbot's own?** The default is `win-sshproxy`, podman's own, proven way. A small relay over `wsl.exe` would need no SSH, and is untried.
-6. **Should the app ask before downloading the 310 MB model on the first start?** The default is no: it downloads in the background, as the compose file does now, and Settings shows memory search as waiting. An owner who wants it off turns it off in Settings.
-7. **Signing:** who holds the Apple Developer ID and the Azure account? Until M5, the one-line install keeps macOS and SmartScreen from asking. An archive opened from a browser's download needs the owner to allow it in System Settings on a Mac, and SmartScreen warns once on Windows.
-8. **The secret key in the app:** a file with mode 0600 in the data folder, as today, or the OS's keychain once Electron's `safeStorage` is there? The default is the file, with the keychain as a question for M5.
+Decided by the owner on 2026-11-08 (see What the owner asked): the app is the main install, the container release is for hosting, and signing waits for Electron.
+
+1. **Postgres 17 or 18 in the app?** The default is 17, the container release's, so a backup restores in either direction, and an owner can move between them both ways. 18 is the newest, and what pglite and embedded-postgres carry. Moving both to 18 later means `pg_upgrade`, or a dump and a restore, as its own change.
+2. **Node 24 or 26?** The default is Node 24.22, Electron 45's own: JSPI is on, and it's supported to April 2028. Node 26 is the current LTS and refuses the old JSPI flag, which fxbot never passes. Either works.
+3. **Lima on a Mac, or vfkit?** The default is Lima: socket forwarding, cloud images, and Intel support, ready-made, for 38–50 MB. vfkit is one program, but fxbot would build its own disk image and vsock relay.
+4. **`win-sshproxy` on Windows, or a relay of fxbot's own?** The default is `win-sshproxy`, podman's own, proven way. A small relay over `wsl.exe` would need no SSH, and is untried.
+5. **Should the app ask before downloading the 310 MB model on the first start?** The default is no: it downloads in the background, as the compose file does now, and Settings shows memory search as waiting. An owner who wants it off turns it off in Settings.
+6. **The secret key in the app:** a file with mode 0600 in the data folder, as today, or the OS's keychain once Electron's `safeStorage` is there? The default is the file, with the keychain as a question for M5.
