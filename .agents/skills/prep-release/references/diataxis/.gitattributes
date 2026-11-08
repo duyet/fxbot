@@ -1,0 +1,3 @@
+# Copied from Diátaxis without changes, its own trailing spaces included. Its headings' ======= underlines aren't
+# merge-conflict markers.
+*.rst -whitespace conflict-marker-size=80

@@ -2,9 +2,9 @@
 
 ## Diátaxis
 
-fxbot's site sorts every page into one of [Diátaxis](https://diataxis.fr)'s four kinds. The quotes below are from diataxis.fr, read on 2026-11-08. When a page is hard to place, use the [compass](https://diataxis.fr/compass/):
+fxbot's site sorts every page into one of Diátaxis's four kinds. Its own pages are in [diataxis/](diataxis/README.md), copied into this skill so it works offline. They're by Daniele Procida, under CC BY-SA 4.0. The summary below quotes them. When a page is hard to place, use the compass ([compass.rst](diataxis/compass.rst)):
 
-| If the content… | …and serves the user's… | …then it belongs to… |
+| If the content… | …and serves the user's… | …then it must belong to… |
 | --- | --- | --- |
 | informs action | acquisition of skill | a tutorial |
 | informs action | application of skill | a how-to guide |
@@ -13,9 +13,11 @@ fxbot's site sorts every page into one of [Diátaxis](https://diataxis.fr)'s fou
 
 You can ask the compass's two questions of a single sentence as well as of a whole page. A paragraph that answers them differently from the rest of its page belongs on another page, with a link to it.
 
+Read the whole page for a kind before you write a new page of it. For a page that sits between two kinds, read [tutorials-how-to.rst](diataxis/tutorials-how-to.rst) or [reference-explanation.rst](diataxis/reference-explanation.rst). [how-to-use-diataxis.rst](diataxis/how-to-use-diataxis.rst) explains how to improve docs one small step at a time, which suits a release's sweep.
+
 ### Tutorials
 
-"A tutorial is an experience that takes place under the guidance of a tutor. A tutorial is always learning-oriented." ([source](https://diataxis.fr/tutorials/))
+"A tutorial is an experience that takes place under the guidance of a tutor. A tutorial is always learning-oriented." ([tutorials.rst](diataxis/tutorials.rst))
 
 - Show the learner where they'll be going.
 - Deliver visible results early and often.
@@ -26,7 +28,7 @@ You can ask the compass's two questions of a single sentence as well as of a who
 
 ### How-to guides
 
-"How-to guides are directions that guide the reader through a problem or towards a result. How-to guides are goal-oriented." ([source](https://diataxis.fr/how-to-guides/))
+"How-to guides are directions that guide the reader through a problem or towards a result. How-to guides are goal-oriented." ([how-to-guides.rst](diataxis/how-to-guides.rst))
 
 - Address real-world complexity, and omit the unnecessary.
 - Give a set of instructions, in a logical sequence that flows the way people work.
@@ -34,7 +36,7 @@ You can ask the compass's two questions of a single sentence as well as of a who
 
 ### Reference
 
-"Reference guides are technical descriptions of the machinery and how to operate it. Reference material is information-oriented." ([source](https://diataxis.fr/reference/))
+"Reference guides are technical descriptions of the machinery and how to operate it. Reference material is information-oriented." ([reference.rst](diataxis/reference.rst))
 
 - Describe, and only describe. Link to steps and reasons instead of including them.
 - Adopt standard patterns, so readers find things where they expect them.
@@ -43,7 +45,7 @@ You can ask the compass's two questions of a single sentence as well as of a who
 
 ### Explanation
 
-"Explanation is a discursive treatment of a subject, that permits reflection. Explanation is understanding-oriented." ([source](https://diataxis.fr/explanation/))
+"Explanation is a discursive treatment of a subject, that permits reflection. Explanation is understanding-oriented." ([explanation.rst](diataxis/explanation.rst))
 
 - Make connections, and provide context: why it's built this way, the history, the constraints.
 - Admit opinion and perspective, and weigh alternatives.

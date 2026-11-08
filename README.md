@@ -236,4 +236,4 @@ v1 is built: bot profiles drawn as animated blobs, a streaming chat that survive
 
 ## License
 
-[Apache License 2.0](LICENSE). The vendored `show-me` skill in `.agents/skills/` keeps its own MIT license.
+[Apache License 2.0](LICENSE). The vendored `show-me` skill in `.agents/skills/` keeps its own MIT license. The Diátaxis pages in `.agents/skills/prep-release/references/diataxis/` are Daniele Procida's, under CC BY-SA 4.0 ([their notice](.agents/skills/prep-release/references/diataxis/README.md)).
