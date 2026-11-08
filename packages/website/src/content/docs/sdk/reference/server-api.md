@@ -129,6 +129,8 @@ A new Vercel account with one team gets that team.
 | `timeZone` | `string` | `""` | The owner's time zone, such as `Europe/Berlin`, which plugins read. `""` is the machine's. Since 0.6.0. |
 | `turnsAtOnce` | `number` | `32` | How many turns run at once, across every bot and chat, from 4 to 100. Read when fxbot starts. Since 0.6.0. |
 | `defaultProfile` | `string` | `""` | The bot whose chat a launch at `/` opens, or `""` for none. A bot's id: an id of another shape fails with 400, and an unknown one with 404. Deleting the bot clears it. Since 0.5.0. |
+| `onboarded` | `boolean` | `false` | Whether first-run setup is finished or skipped. Only `true` can be set. An install from before 0.7.0 with a bot, a plugin, or a provider starts `true`. Since 0.7.0. |
+| `onboardingStep` | `string` | `""` | Where first-run setup is up to, so a reload or a restart comes back to it. Since 0.7.0. |
 | `unvetted` | `boolean` | `false` | Whether plugins fxbot doesn't vet can be found and added: the public registries, and adding by address or repository |
 | `embedder` | `"local"`, `"remote"`, or `"off"` | `"local"` | Where memory search's vectors come from: `embedUrl`, a provider's `/embeddings`, or none |
 | `embeddingProvider` | `string` | `""` | For `remote`: a provider whose kind is in `embeddingKinds` |
@@ -161,9 +163,9 @@ Until Settings' `unvetted` is true, search answers only from fxbot's own lists a
 
 | Call | What it does | Returns |
 | --- | --- | --- |
-| `plugins.list()` | Every plugin. A server from a registry carries that entry's `info`, and a `mark` when it has a newer version, or is deprecated or gone. A skill or a package carries the `mark` of the hourly check. A package lists the servers it added in `servers`. Each plugin, and each card of a search, has `iconKey`, `creator/name`, which `pluginIcon` from `@fxbot/sdk/client` draws. | `Plugin[]` |
+| `plugins.list()` | Every plugin. A server from a registry carries that entry's `info`, and a `mark` when it has a newer version, or is deprecated or gone. A skill or a package carries the `mark` of the hourly check. A package lists the servers it added in `servers`, and carries `unsupported`, saying why, when it can't run on this fxbot, since 0.7.0. A `mark` of `{ kind: "needs", version }` says a newer version needs that fxbot, since 0.7.0. Each plugin, and each card of a search, has `iconKey`, `creator/name`, which `pluginIcon` from `@fxbot/sdk/client` draws. | `Plugin[]` |
 | `plugins.search(q, options)` | Up to 20 servers from fxbot's list and the mirror of GitHub's registry. `{ everything: true }` adds the official registry's results, for 3 characters or more. `{ kind: "skill" }` searches skills instead: fxbot's list, then skills.sh for 2 characters or more. `options` is required: pass `{}` for servers. | `McpSearch` or `SkillSearch` |
-| `plugins.preview(ref)` | A plugin's page, with a `hash`. For a server, what probing it found. For a skill or a package, its files at its repository's current commit. | `McpPreview`, `SkillPreview`, or `PackagePreview` |
+| `plugins.preview(ref)` | A plugin's page, with a `hash`. For a server, what probing it found. For a skill or a package, its files at its repository's current commit. A package that can't run on this fxbot has `unfit`, and `needsFxbot` when a newer fxbot would run it, since 0.7.0. | `McpPreview`, `SkillPreview`, or `PackagePreview` |
 | `plugins.add(ref, hash)` | Adds what the preview showed. It fails with 409 when that changed since, or the skill is already added. | `Plugin` |
 | `plugins.update(id, hash)` | Moves a registry server or a skill to the newer definition its page showed. It fails with 409 when that changed since. | `Plugin` |
 | `plugins.change(id, input)` | Sets `enabled`, `bots` (`"all"`, or `"each"` for chosen bots), and for a server, `allowed`: the names of the tools bots get. A package's servers follow its `enabled` and `bots`. | `Plugin` |
@@ -172,6 +174,7 @@ Until Settings' `unvetted` is true, search answers only from fxbot's own lists a
 | `plugins.forBot(profileId, pluginId, enabled)` | Turns a plugin on or off for one bot. It counts when the plugin's `bots` is `"each"`, and a package's servers follow. | `Plugin` |
 | `plugins.readSkill(id, file?)` | Synchronous. One of an installed skill's files, `SKILL.md` by default. | `string` |
 | `plugins.check()` | Runs the hourly check of the skills' and packages' repositories now | nothing |
+| `plugins.wontRun(next)` | The running packages from GitHub that wouldn't run on fxbot `next`, by name, from their `minFxbot` and what that release broke. Since 0.7.0. | `Promise<string[]>` |
 | `plugins.configure(id, settings)` | A package's settings: a value for each one named, or `""` for its default. Secrets are write-only. | `PackagePlugin` |
 | `plugins.log(id)` | Synchronous. A package's recent log lines and errors | `string[]` |
 | `plugins.contents(id)` | An installed package's page, read from the files it runs: its commit's for one from GitHub, its folder for a local one, whose `source` is `{ local }`. It throws 404 for an id that isn't a package. Since 0.5.0. | `PackagePreview` |
@@ -268,6 +271,7 @@ type Profile = Fields & {
   busy: boolean; // a turn runs in this process
   waiting: boolean; // a plugin's `wait` holds one of its calls
   pinned: boolean;
+  isDefault: boolean; // Settings' defaultProfile is this bot
 };
 
 type Message = { text: string; messageId: string; files?: Upload[] };
@@ -286,7 +290,7 @@ type Provider = {
   error: string | null; // why its agent didn't start
 };
 
-type Settings = { defaultProvider: string; unvetted: boolean; timeZone: string; onboarded: boolean; onboardingStep: string; turnsAtOnce: number; embedder: "local" | "remote" | "off"; embeddingProvider: string; embeddingModel: string; messageVectors: number };
+type Settings = { defaultProvider: string; defaultProfile: string; unvetted: boolean; timeZone: string; onboarded: boolean; onboardingStep: string; turnsAtOnce: number; embedder: "local" | "remote" | "off"; embeddingProvider: string; embeddingModel: string; messageVectors: number };
 
 type EmbeddingStatus = {
   model: string | null;

@@ -42,7 +42,7 @@ For typed calls from a page or a script, use [the client](/sdk/reference/client/
 | `GET` | `/api/update` | | `UpdateStatus` |
 | `POST` | `/api/update` | | 202 and `UpdateStatus`. Asks the machine to update to the newest release the check found. |
 
-`UpdateStatus` is `{ version, latest, canUpdate, updating }`. `canUpdate` is true only in an install made by `setup.sh`, where `FXBOT_CONTROL` is set. `updating` is `{ to, steps, error? }` while an update runs, or after one failed, else `null`. `POST` gets 400 outside such an install, and when the running version is the newest, and 409 while an update runs.
+`UpdateStatus` is `{ version, latest, canUpdate, updating, wontRun }`. `canUpdate` is true only in an install made by `setup.sh`, where `FXBOT_CONTROL` is set. `updating` is `{ to, steps, error? }` while an update runs, or after one failed, else `null`. `wontRun` names the running plugins that wouldn't run on `latest`, since 0.7.0. `POST` gets 400 outside such an install, and when the running version is the newest, and 409 while an update runs.
 
 ## Plugins
 
@@ -68,7 +68,7 @@ For typed calls from a page or a script, use [the client](/sdk/reference/client/
 
 `PluginRef` is `{ url, transport?, headers?, allowLocal? }`, `{ registry, version?, allowLocal?, from? }`, `{ skill, from? }`, or `{ repo, from? }`: see [Plugins](/sdk/reference/server-api/#plugins).
 
-A plugin's id is 12 hex characters, and anything else after `/api/plugins/` that isn't `pages`, `search`, or `preview` is a package's name. Until Settings' `unvetted` is true, search answers only from fxbot's lists, and preview and add refuse anything else with 400.
+A plugin's id is 12 hex characters, and anything else after `/api/plugins/` is a package's name, but for `GET /api/plugins/pages`, `/api/plugins/search`, and `POST /api/plugins/preview`, which are fxbot's own. A package named `pages` has the rest of `/api/plugins/pages/`. Until Settings' `unvetted` is true, search answers only from fxbot's lists, and preview and add refuse anything else with 400.
 
 ## OAuth
 
