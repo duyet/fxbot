@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "fxbot's screenshot tool, kept apart so the app, its image, and the release workflow never install it. See shoot.mjs.",
+  "dependencies": {
+    "playwright-core": "1.64.1"
+  }
+}

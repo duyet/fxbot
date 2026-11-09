@@ -63,6 +63,7 @@ The site has two sets of pages. The docs are for running fxbot, and the SDK page
 | adds or changes plugin API, HTTP API, client, or server API | `sdk/reference/plugin-api.md`, `http-api.md`, `client.md`, and `server-api.md`, checked against the code |
 | changes how something works, or why | explanation: `bots-and-chats.md`, `core-and-plugins.md`, `architecture.md`, `releases.md`, `security.md`, and `sdk/explanation/how-it-works.md` |
 | breaks or removes plugin API | `packages/sdk/src/plugin-breaks.json`, a note under `## Unreleased`, and `plugin-api.md` |
+| adds or changes a screen | its screenshot, from `npm run shots` (scripts/screenshots). A new screen worth showing gets a scene there, and a light and dark `<img class="shot">` pair in its guide. A headline one goes in the home page's gallery, in `src/home.tsx`. |
 | comes from one of fxbot's plugins | that plugin's `README.md` and its `description` in `plugin.json` and `packages/sdk/src/plugins-registry.json`. The site's plugin directory shows these. |
 
 Docs that live outside the site:

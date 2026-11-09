@@ -66,12 +66,13 @@ Read [references/docs.md](references/docs.md). It covers Diátaxis, where each k
    - each changed plugin's README and description, in `plugin.json` and in `plugins-registry.json`
    - the "What the build changed" notes in each phase doc
    - the home page's features, only if a headline feature changed what fxbot is
-5. **Draft `docs/releases/<version>.md`** in the format in docs.md. Leave it uncommitted. It goes in the release commit, which runs `git add docs/releases`.
-6. **Check the site and whitespace:**
+5. **Refresh the screenshots.** Run `npm run build && npm run shots`. It starts a throwaway fxbot with the made-up bots in `scripts/screenshots/world.mjs`, and rewrites each shot in `packages/website/public/shots/` that looks different. Look at every one it rewrote. Don't commit a shot with a broken layout, an error, or anything from a real install. A screen this release added or changed that a guide or the home page should show gets a shot of its own: a scene in `shoot.mjs`, what the bots say in `world.mjs`, and a light and dark `<img class="shot">` pair in its guide. Commit the shots on their own.
+6. **Draft `docs/releases/<version>.md`** in the format in docs.md. Leave it uncommitted. It goes in the release commit, which runs `git add docs/releases`.
+7. **Check the site and whitespace:**
    - Run `npm run build-site`. It needs Node 22.22 or newer, and it checks links.
    - Run `git diff --check`.
    - Look over new files yourself, since that diff doesn't cover them.
-7. **Commit the docs on the release branch,** by topic. Say in each message what changed, and end it with the session's co-author line.
+8. **Commit the docs on the release branch,** by topic. Say in each message what changed, and end it with the session's co-author line.
 
 Fix wrong or missing docs here. A product bug you find while writing them goes in the report, not in a fix.
 
