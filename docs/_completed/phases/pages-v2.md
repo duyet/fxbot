@@ -387,3 +387,4 @@ Print a check's setup, and match exact fields: one that tested nothing can't pas
 - **Task lists lose their bullet,** in `page.css`. A box and a bullet together read as two markers.
 - **The GET routes were read.** Each is a plain read, except `/callback`, which a page can't complete with no sign-in's `state`. A page that moves its frame to one of fxbot's addresses gets nothing, and what it moves to gets no line.
 - **The size:** 329 new lines of plugin, against 500, and no core lines.
+- **Each request gets a bar of its own (before 0.7.0's release).** A page that asked again swapped the words of a bar that was already armed, so its button no longer waited. Now each request mounts a new bar, keyed apart from the frame beside it, and its button waits half a second again.

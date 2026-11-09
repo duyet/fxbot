@@ -206,6 +206,11 @@ function Reader({ params: { id } }) {
 	const [copied, setCopied] = (0, react.useState)(false);
 	const [error, setError] = (0, react.useState)("");
 	const [bar, setBar] = (0, react.useState)(null);
+	const asked = (0, react.useRef)(0);
+	const show = (next) => setBar({
+		...next,
+		turn: ++asked.current
+	});
 	const [fresh, setFresh] = (0, react.useState)(0);
 	const [data, setData] = (0, react.useState)(null);
 	const [notNow, setNotNow] = (0, react.useState)(false);
@@ -265,12 +270,12 @@ function Reader({ params: { id } }) {
 	const say = (text) => {
 		if (!bot) throw new Error("The bot that wrote this page is gone.");
 		if (typeof text !== "string" || !text.trim() || text.length > 4e3 || text.trimStart().startsWith("/")) throw new Error("A page can't say that.");
-		setBar({
+		show({
 			words: `This page wants to tell ${bot.name}:`,
 			detail: text,
 			yes: "Send",
 			no: "Cancel",
-			onYes: () => call(`${id}/say`, "POST", { text }).then(() => setBar({
+			onYes: () => call(`${id}/say`, "POST", { text }).then(() => show({
 				words: `Sent to ${bot.name}.`,
 				yes: `Open ${bot.name}'s chat`,
 				no: "Close",
@@ -294,7 +299,7 @@ function Reader({ params: { id } }) {
 		open(address) {
 			const url = URL.canParse(address) ? new URL(address) : null;
 			if (!url || !["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("That address can't be opened.");
-			setBar({
+			show({
 				words: "This page wants to open:",
 				detail: url.href,
 				yes: "Open",
@@ -413,7 +418,7 @@ function Reader({ params: { id } }) {
 		bar && (0, react_jsx_runtime.jsx)(Bar, {
 			...bar,
 			onNo: () => setBar(null)
-		}),
+		}, `bar-${bar.turn}`),
 		!bar && data?.waiting && !notNow && n === newest && (0, react_jsx_runtime.jsx)(Bar, {
 			words: `${bot?.name ?? "A bot"} wants to give this page data. A page with code can send what it holds elsewhere.`,
 			yes: "Allow",

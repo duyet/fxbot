@@ -137,6 +137,9 @@ function Reader({ params: { id } }) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [bar, setBar] = useState(null);
+  // Each request gets a bar of its own, so its button waits again, and a page can't swap the words under a click.
+  const asked = useRef(0);
+  const show = (next) => setBar({ ...next, turn: ++asked.current });
   const [fresh, setFresh] = useState(0);
   const [data, setData] = useState(null);
   const [notNow, setNotNow] = useState(false);
@@ -191,14 +194,14 @@ function Reader({ params: { id } }) {
   const say = (text) => {
     if (!bot) throw new Error("The bot that wrote this page is gone.");
     if (typeof text !== "string" || !text.trim() || text.length > 4000 || text.trimStart().startsWith("/")) throw new Error("A page can't say that.");
-    setBar({
+    show({
       words: `This page wants to tell ${bot.name}:`,
       detail: text,
       yes: "Send",
       no: "Cancel",
       onYes: () =>
         call(`${id}/say`, "POST", { text }).then(
-          () => setBar({ words: `Sent to ${bot.name}.`, yes: `Open ${bot.name}'s chat`, no: "Close", onYes: () => go(`/profiles/${bot.id}`) }),
+          () => show({ words: `Sent to ${bot.name}.`, yes: `Open ${bot.name}'s chat`, no: "Close", onYes: () => go(`/profiles/${bot.id}`) }),
           (e) => (setError(e.message), setBar(null)),
         ),
     });
@@ -216,7 +219,7 @@ function Reader({ params: { id } }) {
     open(address) {
       const url = URL.canParse(address) ? new URL(address) : null;
       if (!url || !["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("That address can't be opened.");
-      setBar({ words: "This page wants to open:", detail: url.href, yes: "Open", no: "Cancel", onYes: () => (window.open(url.href, "_blank", "noopener,noreferrer"), setBar(null)) });
+      show({ words: "This page wants to open:", detail: url.href, yes: "Open", no: "Cancel", onYes: () => (window.open(url.href, "_blank", "noopener,noreferrer"), setBar(null)) });
     },
   };
   const onOp = (op, args) => {
@@ -251,7 +254,8 @@ function Reader({ params: { id } }) {
         </div>
         {error && <p role="alert" className="text-destructive">{error}</p>}
       </div>
-      {bar && <Bar {...bar} onNo={() => setBar(null)} />}
+      {/* Its own prefix: the frame beside it is keyed by its version's number. */}
+      {bar && <Bar key={`bar-${bar.turn}`} {...bar} onNo={() => setBar(null)} />}
       {!bar && data?.waiting && !notNow && n === newest && (
         <Bar
           words={`${bot?.name ?? "A bot"} wants to give this page data. A page with code can send what it holds elsewhere.`}
