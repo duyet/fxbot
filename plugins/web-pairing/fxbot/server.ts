@@ -7,7 +7,7 @@ import { Cipher, Handshake, generateKeyPair, keyPairFromPrivate, privateBytes, t
 import * as wire from "../../../packages/web-app/protocol/wire.ts";
 import { bridged, serve } from "./bridge.ts";
 import { checkAssertion, checkNew } from "./passkey.ts";
-import { Mapper, check, checkEntry, cloudflareStun, forWerift, iceServers, shown, type IceEntry } from "./reach.ts";
+import { Mapper, check, checkEntry, cloudflareStun, forWerift, freePort, globalV6, iceServers, shown, type IceEntry } from "./reach.ts";
 
 // Web pairing: the owner's fxbot from their phone or any computer, over a WebRTC data channel, with nothing exposed.
 // fxbot.sh's relay passes the sealed handshake and stores nothing; this plugin holds fxbot's keys and its devices, and
@@ -44,7 +44,7 @@ type Ticket = {
   call?: Call;
   timer: ReturnType<typeof setTimeout>;
 };
-type Conn = { pc: RTCPeerConnection; device: string; control?: RTCDataChannel; ready: boolean };
+type Conn = { pc: RTCPeerConnection; device: string; control?: RTCDataChannel; ready: boolean; connected: boolean };
 
 const TICKET_MS = 10 * 60 * 1000;
 const LOCK_MS = 15 * 60 * 1000;
@@ -424,21 +424,28 @@ export default async function webPairing(fx: PluginApi) {
     if (!Number.isSafeInteger(seq) || seq <= Number(device.last_seq)) return stop(c, "replay");
     const moved = await fx.sql`update devices set last_seq = ${seq}, last_seen = now() where id = ${device.id} and last_seq < ${seq}`;
     if (!moved.count) return stop(c, "replay");
+    // A device that connects again is done with its attempts that never connected: they'd only hold ports.
+    for (const old of [...conns]) if (old.device === device.id && !old.connected) (old.pc.close(), conns.delete(old));
     if (conns.size >= 20) return stop(c, "busy");
     const servers = await iceServers(config.ice, fetch, fx.log);
     if (!reach || Date.now() - reachAt > SIX_HOURS) await checkNow().catch(() => null);
     send(c, wire.envelope("k2", await hs.write(utf8(JSON.stringify({ iceServers: servers, reach, device: device.id, name })))));
     const { send: tx, recv: rx } = await hs.split();
     Object.assign(c, { tx, rx, hash: hs.hash, stage: "rtc" });
-    const pc = new RTCPeerConnection({ iceServers: forWerift(servers), icePortRange: config.ports, iceUseIpv6: true });
+    // The ICE ports, so a forwarded or mapped port holds; any port when every one is taken, as the log says.
+    const inRange = await freePort(config.ports);
+    if (!inRange) fx.log(`Every ICE port, ${config.ports.join("–")}, is in use, so this connection uses another, which a forwarded port doesn't cover.`);
+    const pc = new RTCPeerConnection({ iceServers: forWerift(servers), icePortRange: inRange ? config.ports : undefined, iceUseIpv6: globalV6() });
     c.pc = pc;
-    const conn: Conn = { pc, device: device.id, ready: false };
+    const conn: Conn = { pc, device: device.id, ready: false, connected: false };
     conns.add(conn);
     const hash = hs.hash;
     const waiting: RTCDataChannel[] = [];
-    let dropTimer = setTimeout(() => pc.close(), 30_000);
+    // The device gives up at 15 seconds; an attempt that never connects ends soon after.
+    let dropTimer = setTimeout(() => pc.close(), 20_000);
     pc.connectionStateChange.subscribe((state) => {
       if (state === "connected") {
+        conn.connected = true;
         clearTimeout(dropTimer);
         end(c, 1000);
       }

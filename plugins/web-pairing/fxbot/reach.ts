@@ -137,8 +137,19 @@ const isCgnat = (ip: string) => {
   return a === 100 && b >= 64 && b <= 127;
 };
 const isPrivate = (ip: string) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|169\.254\.)/.test(ip) || isCgnat(ip);
-const globalV6 = () => Object.values(networkInterfaces()).flat().some((i) => i && i.family === "IPv6" && !i.internal && /^[23]/.test(i.address));
+export const globalV6 = () => Object.values(networkInterfaces()).flat().some((i) => i && i.family === "IPv6" && !i.internal && /^[23]/.test(i.address));
 const publicV4 = () => Object.values(networkInterfaces()).flat().filter((i) => i && i.family === "IPv4" && !i.internal && !isPrivate(i.address)).map((i) => i!.address);
+
+// Whether a UDP port in the range is free, as werift will look for one.
+export async function freePort([min, max]: [number, number]) {
+  for (let port = min; port <= max; port++) {
+    const socket = createSocket("udp4");
+    const free = await new Promise<boolean>((r) => (socket.once("error", () => r(false)), socket.once("listening", () => r(true)), socket.bind(port)));
+    await new Promise<void>((r) => (free ? socket.close(() => r()) : r()));
+    if (free) return true;
+  }
+  return false;
+}
 
 // The default IPv4 gateway on Linux, for NAT-PMP, which talks to the router directly.
 function gatewayV4() {
