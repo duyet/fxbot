@@ -18,6 +18,7 @@ Each release of fxbot, newest first. A release that adds migrations, bumps libfx
 - **Skip for now skips one step** of first-run setup, where it ended the whole setup: plugins go on to the provider, and the provider to your first bot. On the bot step, it ends setup.
 - **A refused key says which provider, and what to do.** A key refused when you add it says the status and what it most likely means. A chat whose provider refuses its key says "Groq rejected this provider's key. Replace it in Settings › Providers.", where it said "Stopped: refused".
 - **For the SDK:** `providers.catalog()` and `providers.local()` list what the page offers, and the local servers that answer. `providers.add` takes `fields`, `serviceAccount`, and `modelIds`, and a provider's `kind` is any entry's id. A `Provider` gains `label`, `connect`, `docs`, `fields`, and `modelIds`. A `SignIn` gains `way` and `url`, and `signIns.code` finishes one that shows a code. `createFxbot` takes `hfClientId`, and the server `FXBOT_HF_CLIENT_ID`.
+- **For plugins:** `fx.secrets` keeps values a plugin makes itself, such as keys of its own, sealed beside its settings, and `fx.localUrl` is the server's own address, for requests to fxbot's own API.
 - **A wrong OpenRouter key is refused when you add it.** OpenRouter's model list answers anyone, so fxbot took any key there, and the key failed only at the first message. fxbot now checks it where OpenRouter refuses a bad one.
 
 ## 0.7.0 (2026-11-09)

@@ -72,7 +72,7 @@ type Loaded = {
 };
 // `saved` holds the owner's settings, and `settings` those with the defaults, which the plugin reads.
 // `skills` are the ones it carries, read when it loads, and `given` those it gives each bot at runtime (fx.skills.set).
-type Package = { record: PackageRecord; loaded?: Loaded; error?: string; unsupported?: string; log: string[]; saved: Record<string, string>; settings: Record<string, string>; skills: Row[]; given: Map<string, Row[]> };
+type Package = { record: PackageRecord; loaded?: Loaded; error?: string; unsupported?: string; log: string[]; saved: Record<string, string>; own: Record<string, string>; settings: Record<string, string>; skills: Row[]; given: Map<string, Row[]> };
 type Archives = { head(repo: string): Promise<string>; files(repo: string, commit: string, fileLimit?: number): Promise<RepoFiles> };
 type Server = { name: string; url?: string; headers: string[]; transport?: "sse" };
 
@@ -180,6 +180,7 @@ export type PluginHost = {
   memories: PluginApi["memories"];
   models: PluginApi["models"];
   machine: PluginApi["machine"];
+  localUrl: string;
   chats: {
     newSession(plugin: string, bot: string): Promise<string>;
     send(plugin: string, bot: string, message: Parameters<PluginApi["chats"]["send"]>[1]): Promise<{ messageId: string; sessionId: string; joined?: string }>;
@@ -220,7 +221,7 @@ export async function createPlugins(options: {
   // Settings, secret or not, are sealed together, as an MCP server's header values are.
   const secrets = createSecrets(store.sql, secretKey, "plugin_secrets");
   const plugins = new Map<string, Package>();
-  const add = (record: PackageRecord) => plugins.set(record.id, { record, log: [], saved: {}, settings: {}, skills: [], given: new Map() }).get(record.id)!;
+  const add = (record: PackageRecord) => plugins.set(record.id, { record, log: [], saved: {}, own: {}, settings: {}, skills: [], given: new Map() }).get(record.id)!;
   const anyGiven = () => [...plugins.values()].some((plugin) => plugin.given.size > 0);
   for (const record of await store.plugins.list()) if (record.kind === "package") add(record as PackageRecord);
   const on = new Map<string, Set<string>>();
@@ -584,6 +585,22 @@ export async function createPlugins(options: {
       memories: host.memories,
       models: host.models,
       machine: host.machine,
+      // Kept with its settings, `{ values, own }`, so saving either keeps the other.
+      secrets: {
+        async get(name) {
+          return typeof name === "string" && Object.hasOwn(plugin.own, name) ? plugin.own[name] : null;
+        },
+        async set(name, value) {
+          if (typeof name !== "string" || !/^[A-Za-z0-9._-]{1,64}$/.test(name)) throw new Error("A secret's name is up to 64 letters, digits, ., _, or -.");
+          if (value !== null && (typeof value !== "string" || value.length > 64 * 1024)) throw new Error("A secret is text, up to 64 KiB, or null to remove it.");
+          const own = { ...plugin.own };
+          if (value === null) delete own[name];
+          else own[name] = value;
+          await secrets.put(record.id, { values: plugin.saved, own });
+          plugin.own = own;
+        },
+      },
+      localUrl: host.localUrl,
       chats: {
         newSession: (bot) => host.chats.newSession(record.name, bot),
         send: (bot, message) => host.chats.send(record.name, bot, message),
@@ -789,7 +806,9 @@ export async function createPlugins(options: {
       };
       for (const plugin of plugins.values()) visit(plugin, new Set());
       for (const plugin of order) {
-        plugin.saved = (await secrets.get<{ values: Record<string, string> }>(plugin.record.id).catch(() => undefined))?.values ?? {};
+        const sealed = await secrets.get<{ values: Record<string, string>; own?: Record<string, string> }>(plugin.record.id).catch(() => undefined);
+        plugin.saved = sealed?.values ?? {};
+        plugin.own = sealed?.own ?? {};
         if (plugin.record.enabled) await load(plugin);
       }
     },
@@ -865,7 +884,7 @@ export async function createPlugins(options: {
         if (value === "") delete saved[name];
         else saved[name] = value as string;
       }
-      await secrets.put(id, { values: saved });
+      await secrets.put(id, { values: saved, own: plugin.own });
       plugin.saved = saved;
       settle(plugin);
       for (const handler of plugin.loaded?.hooks.get("settings") ?? [])

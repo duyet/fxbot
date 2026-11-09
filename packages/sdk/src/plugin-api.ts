@@ -163,6 +163,12 @@ export type PluginApi = {
   timeZone(): string;
   /** The machine's fxbot command, for a job only root can do; null in a checkout, which has none. */
   machine: PluginMachine | null;
+  /** Values the plugin makes itself, such as keys of its own, sealed beside its settings and never shown. `get` answers
+   * null for a name it never set, and `set` with null removes one. A name is up to 64 letters, digits, `.`, `_`, or
+   * `-`, and a value up to 64 KiB. Since 0.8.0. */
+  secrets: { get(name: string): Promise<string | null>; set(name: string, value: string | null): Promise<void> };
+  /** The server's own address on its machine, such as `http://127.0.0.1:8787`, for requests to fxbot's own API. Since 0.8.0. */
+  localUrl: string;
   /** Writes to the plugin's log, which shows on its row in Plugins. */
   log(...parts: unknown[]): void;
   /** Aborts when the plugin unloads. */

@@ -204,6 +204,7 @@ export async function createFxbot(options: FxbotOptions) {
         },
       },
       machine: options.machine ?? null,
+      localUrl: options.localUrl ?? "http://127.0.0.1:8787",
       timeZone: () => timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
       chats: {
         async newSession(plugin, bot) {

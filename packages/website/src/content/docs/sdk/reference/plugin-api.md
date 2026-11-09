@@ -87,8 +87,10 @@ export default async function setup(fx: PluginApi) {
 | `fx.socket(path, handler)` | A WebSocket. See [Sockets](#sockets). |
 | `fx.sql` | A [postgres](https://github.com/porsager/postgres) client in the plugin's own schema, with two connections at most |
 | `fx.settings` | Its settings, with defaults, and secrets opened. The same object, kept up to date. |
+| `fx.secrets.get(name)`, `fx.secrets.set(name, value)` | Values the plugin makes itself, such as keys of its own, sealed beside its settings and never shown in them. `get` answers `null` for a name it never set, and `set` with `null` removes one. A name is up to 64 letters, digits, `.`, `_`, or `-`, and a value up to 64 KiB of text. Since 0.8.0. |
 | `fx.bots.list()`, `fx.bots.get(id)` | The bots, as [the fxbot object](/sdk/reference/server-api/) lists them |
 | `fx.bots.on(id)` | Whether this plugin is on for the bot. Since 0.6.0. |
+| `fx.localUrl` | The server's own address on its machine, such as `http://127.0.0.1:8787`, for requests to fxbot's own API. Since 0.8.0. |
 | `fx.timeZone()` | The owner's time zone, such as `Europe/Berlin`: **Settings** › **General**'s, or the machine's. Read it at each use. Since 0.6.0. |
 | `fx.chats` | Sessions and turns of its own. See [Turns](#turns). |
 | `fx.dependents()` | The added plugins that need this one: `{ name, version, needs, api }` each, where `needs` is its object for this plugin, and `api` what it provides, or null while it isn't running |
