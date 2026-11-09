@@ -39,7 +39,8 @@ const started = (turn: string) => Number(/^messages-(?:in|ask|again)-(\d+)(?:-[0
 const hash = (...parts: string[]) => createHash("sha256").update(parts.join("\0")).digest("hex");
 const joinNames = (names: string[]) => (names.length < 2 ? names.join("") : names.length === 2 ? names.join(" and ") : `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`);
 const json = (body: unknown, status = 200) => Response.json(body, { status });
-const quote = (words: string) => `"""\n${words.replaceAll('"""', '"')}\n"""`;
+// Any run of three quotes or more becomes one, so the words can't close the quote early and write a frame of their own.
+const quote = (words: string) => `"""\n${words.replace(/"{3,}/g, '"')}\n"""`;
 const escape = (word: string) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export default async function setup(fx: PluginApi) {
