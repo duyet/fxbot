@@ -176,3 +176,4 @@ Three were put to the owner with Round 5, and "do this" took Round 5 as it stood
 - **The `look` prop goes without a line in `plugin-breaks.json`.** It was never documented, nothing used it but the old picker, and a plugin that passes it still draws.
 - **`colors` has new values** for the same names, each the middle of a bot's new body. A chat bubble keeps its own table, so messages look as they did.
 - **Size:** 859 lines added and 414 removed, for 445 more, without the generated table, the site's copies, and each plugin's `page.js`. Added lines passed the plan's 700 because the generator moved 213 lines out of two copies of the geometry. The bundle grew by 40 KB, 10 KB of it gzipped shapes.
+- **The edit page's bar clears the home indicator (before 0.7.0's release).** On an installed iPhone app, **Save** and **Delete** sat under it. The bar now pads its bottom by the safe area, as the message box does.

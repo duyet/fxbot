@@ -242,7 +242,8 @@ function BotSidebar({ profiles, offline, active, onNew, onChange }: { profiles: 
     const byId = new Map((shown ?? []).map((p) => [p.id, p]));
     const group = ids.map((id) => byId.get(id)!).filter(Boolean);
     setMoved(group[0]?.pinned ? [...group, ...rest] : [...pinned, ...group]);
-    void done(client.profiles.order(ids));
+    // An order the server didn't keep goes back to the list's.
+    void done(client.profiles.order(ids).catch((error: Error) => (setMoved(null), Promise.reject(error))));
   };
   const pins = useReorder(reorder, "x");
   const rows = useReorder(reorder);
@@ -556,7 +557,8 @@ function ProfileForm({ id, onSaved }: { id: string; onSaved: () => void }) {
           <BotPlugins profileId={id} />
           {bot && <Place pick={(places) => places.botSettings} props={{ bot }} />}
           {error && <Problem>{error}</Problem>}
-          <div className="sticky -bottom-6 flex justify-between gap-2 border-t bg-background py-3">
+          {/* Clear of an iPhone's home indicator, as the message box is. */}
+          <div className="sticky -bottom-6 flex justify-between gap-2 border-t bg-background pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <Button type="submit" disabled={busy || !loaded}>
               {busy && moving ? "Summarizing the chat…" : "Save"}
             </Button>
