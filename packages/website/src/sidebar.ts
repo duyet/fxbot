@@ -80,7 +80,6 @@ export const topics: Topic[] = [
           { slug: "providers/lmstudio", label: "LM Studio" },
           { slug: "providers/llamacpp", label: "llama.cpp" },
           { slug: "providers/vllm", label: "vLLM" },
-          { slug: "providers/jan", label: "Jan" },
           { slug: "providers/litellm", label: "LiteLLM" },
         ],
       },

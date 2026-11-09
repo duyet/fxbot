@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import qrcode from "qrcode-generator";
-import { ArrowLeftIcon, CheckIcon, CopyIcon, ExternalLinkIcon, LoaderCircleIcon, SearchIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, CopyIcon, ExternalLinkIcon, LoaderCircleIcon, PlugIcon, SearchIcon } from "lucide-react";
 import type { Catalog, CatalogEntry, LocalServer, Model, Provider, SignIn } from "@fxbot/sdk/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { client } from "./client.ts";
-import { PluginIcon } from "./plugin-icon.tsx";
 import { ModelField, aboutModel, useModels } from "./providers.tsx";
 
 const label = "grid gap-1.5 text-sm font-medium";
@@ -127,8 +126,31 @@ function Group({ title, about, children }: { title: string; about?: string; chil
   );
 }
 
-// A provider's mark is drawn from its id, as a plugin's is, so no logo is fetched or bundled.
-const Mark = ({ entry, size = 32 }: { entry: CatalogEntry; size?: number }) => <PluginIcon iconKey={`providers/${entry.id}`} size={size} />;
+// The providers' logos, a chunk of their own, loaded once a page that shows them opens.
+let logosLoaded: Promise<Record<string, string>> | undefined;
+function useLogos() {
+  const [logos, setLogos] = useState<Record<string, string> | null>(null);
+  useEffect(() => void (logosLoaded ??= import("./provider-logos.ts").then((m) => m.logos)).then(setLogos, () => setLogos({})), []);
+  return logos;
+}
+
+// A provider's logo in its own colors, as an image, which runs nothing, on a light tile in both themes, so a black logo and a
+// colored one read alike. One with no logo shows its first letter, and Custom a plug.
+export function Mark({ entry, size = 32 }: { entry: Pick<CatalogEntry, "id" | "name" | "modelsDev">; size?: number }) {
+  const logos = useLogos();
+  const logo = logos?.[entry.id] ?? logos?.[[entry.modelsDev ?? []].flat()[0] ?? ""];
+  return (
+    <span aria-hidden style={{ width: size, height: size, fontSize: size * 0.45 }} className="grid shrink-0 place-items-center rounded-[24%] bg-muted font-semibold text-neutral-900 dark:bg-neutral-100">
+      {!logos ? null : logo ? (
+        <img alt="" src={`data:image/svg+xml;utf8,${encodeURIComponent(logo)}`} style={{ width: size * 0.6, height: size * 0.6 }} className="object-contain" />
+      ) : entry.id === "custom" ? (
+        <PlugIcon style={{ width: size * 0.55, height: size * 0.55 }} />
+      ) : (
+        entry.name.charAt(0).toUpperCase()
+      )}
+    </span>
+  );
+}
 
 function Tile({ entry, found, onPick }: { entry: CatalogEntry; found?: boolean; onPick: () => void }) {
   return (

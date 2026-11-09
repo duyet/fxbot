@@ -14,7 +14,7 @@ const { providers, more } = await fxbot.providers.catalog();
 
 ## A server on your network
 
-For `ollama`, `lmstudio`, `llamacpp`, `vllm`, `jan`, `litellm`, and `custom`, which is any server with an OpenAI-style Chat Completions API.
+For `ollama`, `lmstudio`, `llamacpp`, `vllm`, `litellm`, and `custom`, which is any server with an OpenAI-style Chat Completions API.
 
 ```ts
 const local = await fxbot.providers.add({ kind: "ollama", model: "qwen3:8b" });

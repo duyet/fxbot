@@ -46,7 +46,7 @@ For **Vertex AI**, **AWS Bedrock**, **Azure OpenAI**, and **Cloudflare**, each w
 
 ## A server on your machine
 
-For **Ollama**, **LM Studio**, **llama.cpp**, **vLLM**, **Jan**, and **LiteLLM**. fxbot looks for each at its usual address when the page opens, and marks one that answers **Found here**.
+For **Ollama**, **LM Studio**, **llama.cpp**, **vLLM**, and **LiteLLM**. fxbot looks for each at its usual address when the page opens, and marks one that answers **Found here**.
 
 1. Tap the server. Its usual address is filled in.
 2. Add a key if the server wants one.

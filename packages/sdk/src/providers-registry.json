@@ -501,17 +501,6 @@
       "docs": "/docs/providers/vllm/"
     },
     {
-      "id": "jan",
-      "name": "Jan",
-      "about": "Open models on this machine, from Jan's app",
-      "group": "local",
-      "order": 50,
-      "connect": "url",
-      "baseUrl": "http://localhost:1337/v1",
-      "hint": "Start its Local API Server in Jan's settings. If you set an API key there, paste it here.",
-      "docs": "/docs/providers/jan/"
-    },
-    {
       "id": "litellm",
       "name": "LiteLLM",
       "about": "Your own LiteLLM proxy, in front of any provider",

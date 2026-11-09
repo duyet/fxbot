@@ -37,6 +37,7 @@ Run these from the repository root after `npm install`, with Node 22.18 or newer
 - Add shadcn components from `packages/ui`: `npx shadcn@latest add <name>`.
 - `podman build .` (or `docker build .`) builds fxbot's image from the `Dockerfile`. `bash -n setup.sh deploy/fxbot` checks the shell scripts' syntax.
 - A plugin's `page.js` is built from its `page.jsx` with rolldown, by the command in its README. Commit both.
+- `node scripts/provider-logos.mjs` writes `packages/ui/src/provider-logos.ts`, the Add provider page's logos, from models.dev and the sources it names. Run it after adding a provider to `packages/sdk/src/providers-registry.json`.
 - `node scripts/blob-data.mjs` writes `packages/ui/src/blob-data.ts`, and copies it and `blob-draw.ts` to the site. Run it after changing a shape, a color, or `blob-draw.ts`.
 - `npm run shots` remakes the screenshots in `packages/website/public/shots/`, for the site, the docs, and the README, from a throwaway fxbot with the made-up bots in `scripts/screenshots/world.mjs`. It needs podman or docker, a built page (`npm run build`), and Playwright's Chromium: `npm ci --prefix scripts/screenshots`, then `npx --prefix scripts/screenshots playwright-core install --with-deps chromium` once. It rewrites only the shots that look different. Look at each one it rewrote before committing it.
 - `git diff --check` checks whitespace on tracked changes. New files need a separate look; untracked files are outside that diff.

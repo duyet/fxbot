@@ -605,6 +605,8 @@ What the build found or changed, against the plan:
 - **The catalog's answer is about 50 KB,** not 20, with models.dev's hosts in it for search. The page reads it once, when it opens.
 - **A search result from models.dev** shows the address fxbot will use, with "Not yet tried with fxbot".
 - **A plan's usage note** shows on its card before the sign-in, "Your plan's own usage limits apply", rather than after it.
+- **Real logos, in their own colors, at the owner's word,** where the plan said none. Each tile shows its provider's logo, from LobeHub's icons (MIT) in the brand's colors where it has them, models.dev (MIT), and llama.cpp's repository (MIT), each its owner's trademark, used only to name its provider. OpenRouter's is its LobeHub shape in the purple openrouter.ai uses now, since LobeHub's color one is its old lime. OrcaRouter's, which no set has as a shape, is its site's own picture, made 96 pixels in `scripts/provider-logos/`. `node scripts/provider-logos.mjs` writes them into `packages/ui/src/provider-logos.ts`: 183 logos, for the catalog and the models.dev hosts that search shows, in 267 KB the page loads only when it opens. Each shows as an image, which runs nothing, on a light tile in both themes, so a black logo, such as OpenAI's, and one in black and a color, such as Kimi's, read on the dark theme too. LiteLLM's has no license that says it can be used, so it shows its first letter, and Custom a plug.
+- **Jan left the catalog,** at the owner's word, with its page.
 - **Found by the provider pages' writing, not changed:** Anthropic's list comes 20 to a page, and fxbot reads the first. Anthropic wants a key scoped to a workspace, or a header fxbot doesn't send. A Gemini key refused in a chat shows Gemini's own 400, since a 400 there can be other things too. OpenCode Zen's free models work only in OpenCode's own app, so its card no longer says some are free.
 
 ## 4. Checklist
@@ -640,7 +642,7 @@ What the build found or changed, against the plan:
 
 **M4. The page**
 - [x] `add-provider.tsx`: the groups, search, each kind of card, a device code with its QR and copy link, OpenRouter's redirect and paste, the fields, the key check's messages, and the model step with a recommended model. It's used in Settings, and for **Sign in again** and **Replace key**.
-- [x] Local servers found on the machine are marked as found. *Checked: a stub answering at Jan's usual address marks Jan **Found here**, and no other.*
+- [x] Local servers found on the machine are marked as found. *Checked: a stub answering at vLLM's usual address marks vLLM **Found here**, and no other.*
 - [x] First-run setup's provider step shows the page in place, with its words.
 - [x] In a browser with the mock model and stub providers: each card through to a chat that answers. Block `PATCH /api/settings` from the check page, so the owner's time zone isn't saved as UTC. *Checked in Chromium against a throwaway fxbot, whose providers answered from stubs: first-run setup, OrcaRouter's and Hugging Face's device codes, OpenRouter's way back and its pasted code, Vertex's file, Bedrock's region, Azure's deployments, Vercel's code, Custom's unreachable server, Replace key, and a phone in the dark. Then a chat on each of the eight providers added answered. The check's fxbot was its own, so no owner's settings were near it.*
 
