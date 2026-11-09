@@ -8,7 +8,7 @@ Getting fxbot onto a machine, keeping it running, and taking it off again, with 
 - **A Mac runs it in a Linux VM.** `setup.sh` on macOS says so, with the commands, and a page walks through it: Lima with Debian 13, the distro fxbot and its computer were checked on, reached at `http://127.0.0.1:8787` on the Mac.
 - **The docs say how:** a page to uninstall, a page for a Mac, and a page with the fix for each way an install stops.
 
-Status: planned on 2026-11-07, on `release/0.7.0`, not built. Researched the same day against the research directive's references, nine other installers' scripts, Debian's and Ubuntu's package indexes, and the docs and source of Lima, OrbStack, and Multipass for a Mac. Where this plan says *likely*, the checklist checks it before the build relies on it. The owner's questions are answered in [fxbot today](#fxbot-today-the-owners-questions).
+Status: planned on 2026-11-07, for 0.8.0, not built. Researched the same day against the research directive's references, nine other installers' scripts, Debian's and Ubuntu's package indexes, and the docs and source of Lima, OrbStack, and Multipass for a Mac. Where this plan says *likely*, the checklist checks it before the build relies on it. The owner's questions are answered in [fxbot today](#fxbot-today-the-owners-questions).
 
 ## What the owner asked
 
