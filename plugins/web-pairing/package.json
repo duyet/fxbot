@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "What the web-pairing plugin's server is bundled from: werift for WebRTC, the port mapper, and the pairing protocol in packages/web-app/protocol. See the README. fxbot reads only type, which makes its server code an ES module.",
+  "devDependencies": {
+    "@achingbrain/nat-port-mapper": "4.0.5",
+    "@noble/curves": "2.4.0",
+    "qrcode-generator": "2.0.4",
+    "werift": "0.25.2"
+  }
+}

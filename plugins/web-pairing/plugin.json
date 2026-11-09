@@ -1,0 +1,15 @@
+{
+  "name": "web-pairing",
+  "version": "0.1.0",
+  "description": "Your fxbot from your phone or any computer, at web.fxbot.sh, peer to peer and end-to-end encrypted, with nothing exposed.",
+  "license": "Apache-2.0",
+  "extensions": {
+    "sh.fxbot": {
+      "minFxbot": "0.8.0",
+      "server": "./fxbot/server.js",
+      "page": "./fxbot/page.js",
+      "css": "./fxbot/page.css",
+      "migrations": "./fxbot/migrations"
+    }
+  }
+}

@@ -1,5 +1,6 @@
 {
   "extends": "../packages/sdk/tsconfig.json",
   "compilerOptions": { "noEmit": true, "noUnusedLocals": false },
-  "include": ["*/fxbot/*.ts"]
+  "include": ["*/fxbot/*.ts"],
+  "exclude": ["web-pairing/fxbot/*.ts"]
 }

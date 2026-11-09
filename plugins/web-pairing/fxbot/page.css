@@ -1,0 +1,12 @@
+/* What the Web pairing tab draws that the app's own classes don't: the code, the six digits, the QR code, and marks. */
+.wp-code, .wp-sas { font-size: 1.75rem; font-weight: 600; letter-spacing: 0.1em; font-variant-numeric: tabular-nums; text-align: center; margin: 0; }
+.wp-sas { font-size: 2.25rem; }
+.wp-qr { width: 200px; max-width: 100%; justify-self: center; background: #fff; border-radius: 8px; padding: 4px; }
+.wp-qr svg { display: block; width: 100%; height: auto; }
+.wp-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--border, #ccc); }
+.wp-dot.wp-on { background: #16a34a; }
+.wp-mark { flex: none; width: 1.25rem; text-align: center; font-weight: 600; }
+.wp-good { color: #16a34a; }
+.wp-warn { color: #b45309; }
+.wp-bad { color: #dc2626; }
+.wp-unknown { color: var(--muted-foreground, #888); }
