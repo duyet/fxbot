@@ -7,7 +7,7 @@ Hugging Face's router reaches open models from many inference providers, such as
 
 ## Sign in
 
-**Hugging Face** shows under **Sign in** once fxbot has a Hugging Face app of its own: when the list of providers fxbot reads from fxbot.sh names one, or when the server sets [`FXBOT_HF_CLIENT_ID`](/docs/reference/configuration/). Until then, [use a token](#make-a-token).
+**Hugging Face** signs in through fxbot's own app there, which fxbot's list of providers names. A server that sets [`FXBOT_HF_CLIENT_ID`](/docs/reference/configuration/) uses its own app instead. Or [use a token](#make-a-token).
 
 1. In **Settings** › **Providers**, choose **Add provider**, then **Hugging Face**, under **Sign in**.
 2. Choose **Sign in with Hugging Face**. A code shows.

@@ -317,7 +317,7 @@
       "order": 185,
       "connect": "key",
       "signIn": "huggingface",
-      "clientId": "",
+      "clientId": "faba25f5-6582-4b39-a7fb-8f677bcdaa06",
       "baseUrl": "https://router.huggingface.co/v1",
       "keyPage": "https://huggingface.co/settings/tokens",
       "steps": ["Choose Create new token, then Fine-grained.", "Tick Make calls to Inference Providers, and create the token."],

@@ -93,7 +93,7 @@ For `chatgpt`, `grok`, `vercel`, `huggingface`, and `orcarouter` by device code,
 
 One sign-in runs at a time: a new one replaces one still waiting. `signIns.cancel(id)` stops one. To sign in again to a provider you have, as after a failed refresh, pass its id: `signIns.start({ kind: "chatgpt", provider: id })`.
 
-A Vercel account needs fxbot's Vercel OAuth app, and Hugging Face fxbot's Hugging Face app: the list of providers names them once they're registered, or pass their ids to `createFxbot` as `vercelClientId` and `hfClientId`.
+A Vercel account needs fxbot's Vercel OAuth app, and Hugging Face fxbot's Hugging Face app. The list of providers names Hugging Face's, and will name Vercel's once it's registered. Or pass your own apps' ids to `createFxbot` as `vercelClientId` and `hfClientId`.
 
 ## Then: models and bots
 

@@ -22,7 +22,7 @@ If it fails:
 
 - A code that runs out says so, with **Start again**.
 - A ChatGPT account or workspace must allow device code sign-in. The error says how to turn it on.
-- **Vercel** and **Hugging Face** show only once fxbot's own app at each is set, by fxbot's list of providers or with [`FXBOT_VERCEL_CLIENT_ID` and `FXBOT_HF_CLIENT_ID`](/docs/reference/configuration/). Until then, use an AI Gateway key, or a Hugging Face token, under **Use a key**.
+- **Vercel** shows only once fxbot's own app there is set, by fxbot's list of providers or with [`FXBOT_VERCEL_CLIENT_ID`](/docs/reference/configuration/). Until then, use an AI Gateway key, under **Use a key**.
 - After a failed refresh, the provider's **Sign in again**, in **Settings** › **Providers**, starts a new sign-in.
 
 ## Use a key
