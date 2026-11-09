@@ -718,6 +718,7 @@ The notice and Reachability link straight to these, so each page has a section p
 ### Not in this phase
 
 - **Hosted TURN.** Owners deploy their own. A hosted cloud version of fxbot, if one comes, could include it.
+- **A second relay for devices to fall back on,** so an outage of one doesn't stop reconnects. The owner's call (2026-11-09): later, if adoption grows. Until then, there's one relay, and the owner's own as a setting.
 - **PCP port mapping,** until a pure-JavaScript library is fit for the bundle. NAT-PMP and UPnP are in.
 - **Notifications to a closed app.** These would be Web Push signed by fxbot's own VAPID key, which needs no host of fxbot's, as OpenClaw's gateway does.
   - On iOS, Web Push works only in Home Screen apps.
@@ -835,6 +836,7 @@ Decided by the owner on 2026-11-09 (see What the owner asked):
 - STUN only by default, Cloudflare's, in a list the owner orders and edits.
 - TURN is the owner's own.
 - All of the peer-to-peer code is in a plugin, in Essentials.
+- A second relay waits for adoption.
 
 Still open:
 1. **Frame names: `<frame>.fxbot.sh` or `<frame>.web.fxbot.sh`?** The default is `<frame>.fxbot.sh`, which Cloudflare's free certificate covers. The second reads better but needs Advanced Certificate Manager, about $10 a month.
@@ -843,4 +845,3 @@ Still open:
 4. **Cloudflare's free plan, or paid ($5 a month)?** The default is paid from launch. On the free plan, going over the cap stops every pairing worldwide until midnight UTC. Essentials adds no load until a device is paired.
 5. **May a paired device pair others?** The default is yes, since that's what keeps a pairing from waiting for home. The alternative is that only fxbot's own screen approves.
 6. **If werift fails a browser in M1, fix it or fork it?** The default is a fix upstream, with a fork bundled meanwhile. It's plain TypeScript with one maintainer, so either is in reach. node-datachannel connects in a third of the time at 2–3× the speed, but it's native, so core would have to carry it, which the owner ruled out.
-7. **A second relay for devices to fall back on?** The default is the one relay, with the owner's own as a setting. Devices could try fxbot.sh's and then the owner's, so an outage of one doesn't stop reconnects; that's a list where there's one address now.
