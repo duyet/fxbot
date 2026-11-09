@@ -2,7 +2,7 @@
 
 Each release of fxbot, newest first. A release that adds migrations, bumps libfx, or needs a step by hand opens with **Before upgrading**. Lines for the next release collect under Unreleased. GitHub Releases and Settings show a short version of each section.
 
-## Unreleased
+## 0.7.0 (2026-11-09)
 
 **Before upgrading.** Migration `0011_onboarding` adds `onboarding_step` and `onboarded_at` columns to `settings`. An install with a bot, a plugin, or a provider is marked done, so it never sees first-run setup. Migration `0012_looks` adds `mood`, `head`, `face`, `outfit`, and `tint` columns to `profiles`. Every bot keeps its shape and its color, drawn the new way. Migration `0013_bot_order` adds a `position` column to `profiles`, for the order you drag bots into. Until you do, they keep the order they had. Then update your plugins from **Plugins**: each of fxbot's shows **Update available** once. Chat rooms 0.3.1 adds a `position` column to its rooms, and Messages 0.1.1 an `asked` column to its conversations, when they update.
 
