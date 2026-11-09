@@ -4,13 +4,46 @@
 import qrcode from "qrcode-generator";
 import { b64u, base32, concat, dec, fromB64u, random, utf8, type Bytes } from "../protocol/bytes.ts";
 import { isk, secret, share } from "../protocol/cpace.ts";
-import { Cipher, Handshake, generateKeyPair, type KeyPair } from "../protocol/noise.ts";
+import { Cipher, Handshake, generateKeyPair, keyPairFromPrivate, privateBytes, type KeyPair } from "../protocol/noise.ts";
 import * as wire from "../protocol/wire.ts";
 import { addPasskey, recoverWithPasskey, passkeysSupported } from "./passkey.ts";
 
 // --- Storage: one IndexedDB store of pairings. A device key is non-extractable: it signs handshakes, and its private
 // half can't be read back out.
-export type Pairing = { rid: string; I: string; relay: string; device: string; frame: string; name: string; key: KeyPair; seq: number; pairedAt: number; how: string };
+export type Pairing = { rid: string; I: string; relay: string; device: string; frame: string; name: string; key: KeyPair; seq: number; pairedAt: number; how: string; sealed?: Sealed };
+type Sealed = { wrap: CryptoKey; iv: Uint8Array; data: ArrayBuffer; publicKey: Uint8Array };
+// A browser that can't store an X25519 key, as WebKit's Linux build can't, keeps its bytes sealed under an AES-GCM key
+// it can store, which is non-extractable too.
+type Stored = Omit<Pairing, "key"> & { key?: KeyPair };
+let storesX25519: Promise<boolean> | null = null;
+const canStoreKeys = () =>
+  (storesX25519 ??= generateKeyPair(false).then((k) => {
+    try {
+      structuredClone(k.privateKey);
+      return true;
+    } catch {
+      return false;
+    }
+  }, () => false));
+export const newDeviceKey = async () => generateKeyPair(!(await canStoreKeys()));
+async function toStored(p: Pairing): Promise<Stored> {
+  if (await canStoreKeys()) return p;
+  // Sealed once, when the key is new; a key read back is non-extractable, and keeps its sealed bytes.
+  if (p.sealed) {
+    const { key: _, ...rest } = p;
+    return rest;
+  }
+  const wrap = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const iv = random(12);
+  const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, wrap, await privateBytes(p.key.privateKey));
+  const { key: _, ...rest } = p;
+  return { ...rest, sealed: { wrap, iv, data, publicKey: p.key.publicKey } };
+}
+async function fromStored(s: Stored): Promise<Pairing> {
+  if (s.key) return s as Pairing;
+  const raw = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: s.sealed!.iv as Bytes }, s.sealed!.wrap, s.sealed!.data));
+  return { ...s, key: await keyPairFromPrivate(raw) };
+}
 const db = new Promise<IDBDatabase>((resolve, reject) => {
   const open = indexedDB.open("fxbot-shell", 1);
   open.onupgradeneeded = () => open.result.createObjectStore("pairings", { keyPath: "rid" });
@@ -22,8 +55,11 @@ async function store<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => ID
   const req = run(tx.objectStore("pairings"));
   return new Promise((resolve, reject) => ((tx.oncomplete = () => resolve(req.result as T)), (tx.onerror = () => reject(tx.error))));
 }
-const allPairings = () => store<Pairing[]>("readonly", (s) => s.getAll());
-const savePairing = (p: Pairing) => store("readwrite", (s) => s.put(p));
+const allPairings = async () => Promise.all((await store<Stored[]>("readonly", (s) => s.getAll())).map(fromStored));
+const savePairing = async (p: Pairing) => {
+  const stored = await toStored(p);
+  return store("readwrite", (s) => s.put(stored));
+};
 const forget = (rid: string) => store("readwrite", (s) => s.delete(rid));
 
 // Each connect's counter only goes up, across tabs too: a Web Lock holds it while it moves.
@@ -347,7 +383,7 @@ let progress: Progress | null = null;
 const setProgress = (p: Progress | null) => ((progress = p), render());
 
 async function pairWith(t: { rid: string; tid: Bytes; I: Bytes; relay: string }, via: Inbox, psk: Bytes, how: string) {
-  const D = await generateKeyPair(false);
+  const D = await newDeviceKey();
   const me = deviceName();
   const hs = await new Handshake({ pattern: "IKpsk2", initiator: true, prologue: wire.pairPrologue(t.rid, t.tid), s: D, rs: t.I, psk }).init();
   via.send(wire.envelope("p1", concat(t.tid, await hs.write(utf8(JSON.stringify(me))))));
@@ -409,13 +445,12 @@ async function pairByCode(text: string, relay: string) {
 
 // Asks the browser to keep this site's storage, which holds the pairing. Chrome decides by itself, Firefox asks, and
 // Safari grants it to a Home Screen app.
+// Firefox asks the person, so the answer may come long after; pairing doesn't wait for it.
 let persisted: boolean | null = null;
 async function keepStorage() {
-  try {
-    persisted = (await navigator.storage?.persisted?.()) || (await navigator.storage?.persist?.()) || false;
-  } catch {
-    persisted = false;
-  }
+  const ask = (async () => (await navigator.storage?.persisted?.()) || (await navigator.storage?.persist?.()) || false)().catch(() => false);
+  void ask.then((granted) => ((persisted = granted), render()));
+  await Promise.race([ask, new Promise((r) => setTimeout(r, 1500))]);
 }
 // A private window keeps a small quota and forgets everything when it closes.
 let privateWindow = false;

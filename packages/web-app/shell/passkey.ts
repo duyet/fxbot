@@ -1,9 +1,9 @@
 // Passkeys, opt-in: one per fxbot, which the browser's password manager keeps and syncs. On a wiped or new device, it
 // pairs again with no code and no other device. WebAuthn binds it to this site, so a lookalike page can't use it.
 import { b64u, dec, fromB64u, random, utf8 } from "../protocol/bytes.ts";
-import { Handshake, generateKeyPair } from "../protocol/noise.ts";
+import { Handshake } from "../protocol/noise.ts";
 import * as wire from "../protocol/wire.ts";
-import type { Link, Pairing } from "./shell.ts";
+import { newDeviceKey, type Link, type Pairing } from "./shell.ts";
 
 export const passkeysSupported = () => typeof PublicKeyCredential !== "undefined" && Boolean(navigator.credentials?.create);
 
@@ -29,7 +29,7 @@ export async function addPasskey(link: Link) {
 
 // Pairs this device by passkey: a new key, an assertion over it, then Noise IK to the fxbot the passkey names.
 export async function recoverWithPasskey(relay: string, me: { name: string; platform: string }, frame: string): Promise<Pairing> {
-  const D = await generateKeyPair(false);
+  const D = await newDeviceKey();
   const time = Date.now();
   const nonce = random(16);
   const cred = (await navigator.credentials.get({ publicKey: { challenge: await wire.passkeyChallenge(D.publicKey, time, nonce), rpId: location.hostname, userVerification: "required" } })) as PublicKeyCredential | null;

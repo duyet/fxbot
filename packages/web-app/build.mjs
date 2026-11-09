@@ -18,7 +18,7 @@ await bundle("shell/sw.ts", "shell/sw.js", "iife");
 await bundle("frame/start.ts", "frame/start.js", "iife");
 await bundle("frame/frame.ts", "frame/frame.js", "iife");
 await bundle("frame/sw.ts", "frame/sw.js", "iife");
-for (const f of ["index.html", "shell.css", "manifest.webmanifest", "icon-192.png", "icon-512.png"]) copyFileSync(join(here, "shell", f), join(dist, "shell", f));
+for (const f of ["index.html", "shell.css", "manifest.webmanifest", "icon-192.png", "icon-512.png", "licenses.txt"]) copyFileSync(join(here, "shell", f), join(dist, "shell", f));
 copyFileSync(join(here, "frame/start.html"), join(dist, "frame/start.html"));
 
 // The shell's worker keeps its files under a name that changes with them.
