@@ -9,8 +9,13 @@ const cacheMs = 5 * 60 * 1000;
 
 // The models.dev entries behind the hosted key kinds.
 const catalogOf: Record<string, string> = { openai: "openai", opencode: "opencode", "opencode-go": "opencode-go", openrouter: "openrouter" };
-// OpenCode's chat paths serve no model list; these lists beside them answer a bad key with a 401 (checked).
-const keyCheckAt: Record<string, string> = { opencode: "https://opencode.ai/inference/v1/models", "opencode-go": "https://opencode.ai/inference/go/v1/models" };
+// OpenCode's chat paths serve no model list; these lists beside them answer a bad key with a 401 (checked). OpenRouter's
+// list is public, so any key passed there; its key endpoint answers a bad one with a 401 (checked).
+const keyCheckAt: Record<string, string> = {
+  opencode: "https://opencode.ai/inference/v1/models",
+  "opencode-go": "https://opencode.ai/inference/go/v1/models",
+  openrouter: "https://openrouter.ai/api/v1/key",
+};
 
 // A failed list says which source failed and its status, so a bad key never looks like an empty list. `upstream`
 // is the source's own status, for the key check.
