@@ -66,7 +66,8 @@ export function createLibrary(sql: Sql) {
   }
 
   // Inserts the bytes, or finds the item that holds them, and tags it for the bot and chat, in one statement. The
-  // same bot and chat again adds no tag. The first save's name, origin, and type stay.
+  // same bot and chat again adds no tag. The first save's name and type stay, and so does its origin, unless the owner
+  // sends what a bot made: then it's theirs, so `replace` leaves it as they sent it.
   async function save(input: NewItem) {
     const { kind, type, text } = check(input);
     const { profileId, sessionId, origin, bytes } = input;
@@ -74,27 +75,37 @@ export function createLibrary(sql: Sql) {
     const [{ id }] = await sql<{ id: string }[]>`
       with item as (insert into library (id, sha256, kind, origin, name, type, size, data, text)
           values (${newId()}, ${sha256}, ${kind}, ${origin}, ${input.name.trim()}, ${type}, ${bytes.length}, ${bytes}, ${text})
-          on conflict (sha256) do update set sha256 = excluded.sha256 returning id),
+          on conflict (sha256) do update set sha256 = excluded.sha256,
+            origin = case when excluded.origin = 'uploaded' then 'uploaded' else library.origin end returning id),
         tag as (insert into library_tags (item_id, profile_id, session_id) select id, ${profileId}, ${sessionId} from item on conflict do nothing)
       select id from item`;
     return get(id);
   }
 
   // A document a bot made, changed in place, so it keeps its id and tags. The chat that changed it gets a tag, or its tag
-  // moves to now, which brings the item to the top. What the owner sent stays as they sent it.
+  // moves to now, which brings the item to the top. What the owner sent stays as they sent it, and so does what another
+  // bot holds too, since one item serves every bot that saved the same text.
   async function replace({ profileId, sessionId, id, name, type, bytes }: Omit<NewItem, "origin"> & { id: string }) {
     const { kind, type: kept, text } = check({ name, type, bytes });
-    const [row] = isId(id) ? await sql<{ kind: string; origin: string; name: string; type: string; sha256: string }[]>`
-      select kind, origin, name, type, sha256 from library l where id = ${id} and exists (select 1 from library_tags t where t.item_id = l.id and t.profile_id = ${profileId})` : [];
+    const [row] = isId(id) ? await sql<{ kind: string; origin: string; name: string; type: string; sha256: string; shared: boolean }[]>`
+      select kind, origin, name, type, sha256, exists (select 1 from library_tags t where t.item_id = l.id and t.profile_id <> ${profileId}) as shared
+      from library l where id = ${id} and exists (select 1 from library_tags t where t.item_id = l.id and t.profile_id = ${profileId})` : [];
     if (!row) return fail(404, `This bot's library has no item library:${id}.`);
     if (kind !== "document" || row.kind !== "document" || row.origin !== "generated") fail(400, `library:${id} isn't a document a bot made`);
+    if (row.shared) fail(400, `library:${id} is in another bot's library too, so it can't change in place`);
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     if (row.sha256 === sha256 && row.name === name.trim() && row.type === kept) return get(id);
     const [other] = await sql<{ id: string }[]>`select id from library where sha256 = ${sha256} and id <> ${id}`;
     if (other) fail(400, `the library already has this text as library:${other.id}`);
-    await sql`with item as (update library set sha256 = ${sha256}, name = ${name.trim()}, type = ${kept}, size = ${bytes.length}, data = ${bytes}, text = ${text} where id = ${id} returning id)
-      insert into library_tags (item_id, profile_id, session_id) select id, ${profileId}, ${sessionId} from item
-      on conflict (item_id, profile_id, session_id) do update set created_at = now()`;
+    try {
+      await sql`with item as (update library set sha256 = ${sha256}, name = ${name.trim()}, type = ${kept}, size = ${bytes.length}, data = ${bytes}, text = ${text} where id = ${id} returning id)
+        insert into library_tags (item_id, profile_id, session_id) select id, ${profileId}, ${sessionId} from item
+        on conflict (item_id, profile_id, session_id) do update set created_at = now()`;
+    } catch (error) {
+      // The same text saved meanwhile, between the check above and this.
+      if ((error as { code?: string }).code === "23505") fail(400, "the library already has this text");
+      throw error;
+    }
     return get(id);
   }
 

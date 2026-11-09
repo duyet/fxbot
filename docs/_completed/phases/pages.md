@@ -469,3 +469,4 @@ Nothing is left open.
 - **A script can leave, and a check shows it.** It can move its own frame, and alone in a tab, it can move itself. So `pages_html` isn't `safe`, and the plan's reason holds.
 - **A link in a reply says too much.** Streamdown's dialog says "Open external link?" and "You're about to visit an external website." for `/pages/<id>` too. It's how every link behaves, so it stayed, as planned. It's a small change to the chat, for later.
 - **The size:** a net 37 core lines, against 45, and 417 of the plugin, against 430.
+- **A shared item doesn't change in place (before 0.7.0's release).** The library keeps one item for the same text, so a bot that wrote a page with another bot's exact document could rewrite it, and a page's next version could change a copy the owner sent. Now `fx.library.replace` refuses an item another bot holds too, the owner sending a bot's document makes it an upload, and `pages_write` won't make another bot's document a page.

@@ -105,6 +105,9 @@ export default async function setup(fx: PluginApi) {
   async function make({ bot, session, messageId }: Call, title: string, type: string, text: string) {
     const item = await fx.library.save({ bot, session, name: nameOf(title, type), type, bytes: Buffer.from(text) });
     if (item.origin === "uploaded") return `Not saved: the owner sent this text, as library:${item.id}.`;
+    // A document another bot saved stays that bot's, unless this bot's page holds it already.
+    const [held] = await fx.sql<{ bot: string }[]>`select bot from pages where id = ${item.id}`;
+    if (!held && item.profileIds.some((id) => id && id !== bot)) return `Not saved: another bot's library has this text, as library:${item.id}.`;
     const [page] = await fx.sql<{ bot: string }[]>`insert into pages (id, bot) values (${item.id}, ${bot}) on conflict (id) do update set id = excluded.id returning bot`;
     if (page.bot !== bot) return `Not saved: another bot's page has this text, as library:${item.id}.`;
     const last = await newest(item.id);

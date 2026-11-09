@@ -135,7 +135,8 @@ export type PluginApi = {
     /** Saves to the bot's library, tagged for the chat, through the library's checks: an image, or UTF-8 text. */
     save(item: { bot: string; session: string; name: string; type: string; bytes: Buffer }): Promise<LibraryItem>;
     /** Changes a document a bot made, in place: its id and tags stay, this chat gets a tag, and it comes to the top. It
-     * refuses an image, an upload, an item not tagged for the bot, and text another item holds. Since 0.7.0. */
+     * refuses an image, an upload (a bot's document the owner sends becomes one), an item not tagged for the bot, one
+     * another bot holds too, and text another item holds. Since 0.7.0. */
     replace(item: { bot: string; session: string; id: string; name: string; type: string; bytes: Buffer }): Promise<LibraryItem>;
     /** The items saved in one chat of the bot, newest first. Since 0.6.0. */
     list(bot: string, session: string): Promise<LibraryItem[]>;
