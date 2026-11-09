@@ -1,0 +1,57 @@
+# web.fxbot.sh: one Worker for the shell, every frame's origin, and the relay.
+#
+#   npm run dev      this Worker on this machine, at http://localhost:8771, with frames at http://<frame>.localhost:8771
+#   npm run deploy   builds, then deploys it to web.fxbot.sh and *.fxbot.sh, with `--env production`
+#
+# On your own Cloudflare account, copy [env.production] with your own zone in place of fxbot.sh, as README.md says.
+name = "fxbot-web"
+main = "relay/worker.ts"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+[vars]
+SHELL_HOST = "localhost:8771"
+
+[dev]
+ip = "127.0.0.1"
+port = 8771
+
+# The Worker runs first for every request, so it sets each response's headers; it reads the files through ASSETS.
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+not_found_handling = "none"
+
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "Relay"
+
+[[durable_objects.bindings]]
+name = "PLATES"
+class_name = "Plates"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Relay", "Plates"]
+
+# No logs: the relay keeps nothing, not even a line about a call.
+[observability]
+enabled = false
+
+[observability.logs]
+enabled = false
+head_sampling_rate = 0
+
+[env.production]
+name = "fxbot-web"
+routes = [
+  { pattern = "web.fxbot.sh", custom_domain = true },
+  { pattern = "*.fxbot.sh/*", zone_name = "fxbot.sh" },
+]
+vars = { SHELL_HOST = "web.fxbot.sh" }
+durable_objects.bindings = [
+  { name = "RELAY", class_name = "Relay" },
+  { name = "PLATES", class_name = "Plates" },
+]

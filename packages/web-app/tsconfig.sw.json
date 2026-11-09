@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": [], "lib": ["ES2023", "WebWorker"] },
+  "include": ["shell/sw.ts", "frame/sw.ts", "frame/port.ts"]
+}

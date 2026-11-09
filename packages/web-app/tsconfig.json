@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": [] },
+  "include": ["protocol/*.ts", "shell/shell.ts", "shell/passkey.ts", "frame/start.ts", "frame/frame.ts", "frame/ask.ts", "frame/port.ts"]
+}

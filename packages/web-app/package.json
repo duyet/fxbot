@@ -1,0 +1,21 @@
+{
+  "name": "@fxbot/web-app",
+  "private": true,
+  "type": "module",
+  "description": "web.fxbot.sh: the shell, each fxbot's frame, the relay Worker, and the pairing protocol the web-pairing plugin bundles too. Not a workspace, so its tools never reach fxbot's image. See README.md.",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node protocol/check.mjs",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.sw.json && tsc -p tsconfig.relay.json",
+    "dev": "node build.mjs && wrangler dev",
+    "deploy": "node build.mjs && wrangler deploy --env production"
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "qrcode-generator": "2.0.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261025.1",
+    "wrangler": "4.152.0"
+  }
+}
