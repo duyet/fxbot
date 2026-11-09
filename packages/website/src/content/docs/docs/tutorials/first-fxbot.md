@@ -86,7 +86,7 @@ Name the bot `Scout`, pick how it looks, or tap **Surprise me**, and tap **Creat
 
 fxbot says where plugins live for later. Tap **Start chatting**, and Scout's chat opens.
 
-If you leave partway, fxbot comes back to the same step. **Skip for now** ends it, and everything it does is still there: **Plugins** at the foot of the sidebar, **Settings** › **Providers**, and **New bot**.
+If you leave partway, fxbot comes back to the same step. **Skip for now** skips the step it's on, and on the bot step, the last, it ends setup. Everything a step does is still there later: **Plugins** at the foot of the sidebar, **Settings** › **Providers**, and **New bot**.
 
 <img class="shot dark:sl-hidden" src="/shots/setup-bot-desktop-light.png" width="1280" height="800" alt="First-run setup, on Make a bot, with the look picker" />
 <img class="shot light:sl-hidden" src="/shots/setup-bot-desktop-dark.png" width="1280" height="800" alt="First-run setup, on Make a bot, with the look picker" />

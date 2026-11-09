@@ -400,3 +400,4 @@ Print a check's setup, and match exact fields: one that tested nothing can't pas
 - **The published list keeps the pack when it has none,** so an install reading an older fxbot.sh still has one. A dev install's first screen has no `note` until a release puts it on fxbot.sh, since the published `plugins` replace the shipped ones.
 - **`BotForm`** is in `bot-form.tsx`, and `NewBot` is the dialog around it.
 - **The size:** it first came to 418 core lines against a bound of 380. A shared `Step`, and fewer one-off components, with nothing cut, gave 372.
+- **Skip for now skips one step, in 0.8.0.** It ended the whole setup, from any step. The owner, trying a fresh install, skipped the plugins and landed in the app, with no provider or bot. Now it skips the step it's on: plugins go on to the provider, and the provider to the first bot, which can wait for a provider. On the bot step, the last, it ends setup.

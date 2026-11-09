@@ -31,6 +31,8 @@ export function Onboarding({ step, profiles, onStep, onRefresh, onDone }: { step
   useEffect(() => void load(), []);
   const move = (next: string) => (onStep(next), void client.settings.update({ onboardingStep: next }).catch(() => {}));
   const finish = (bot?: string) => void client.settings.update({ onboarded: true }).then(() => onDone(bot), (e: Error) => setError(e.message));
+  // Skip for now skips the step it's on: plugins go on to the provider, and the provider to the first bot, which can
+  // wait for one. Skipping the bot, the last, ends setup.
   const add = (names: string[]) => move(names.length ? `adding:${names.join(",")}` : "provider");
   // A bot needs a provider with a model, so that step is passed only when there's one.
   const afterAdding = () => void readyProvider().then((provider) => move(provider?.model ? "bot" : "provider"), (e: Error) => setError(e.message));
@@ -70,7 +72,7 @@ export function Onboarding({ step, profiles, onStep, onRefresh, onDone }: { step
         {screen}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         {kind !== "plugins" && (
-          <button type="button" className={`justify-self-start ${later}`} onClick={() => finish()}>
+          <button type="button" className={`justify-self-start ${later}`} onClick={() => (kind === "bot" ? finish() : move(kind === "provider" ? "bot" : "provider"))}>
             Skip for now
           </button>
         )}
