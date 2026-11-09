@@ -5,7 +5,7 @@ description: "Run web.fxbot.sh's Worker, the shell, the frames, and the relay, o
 
 Run web.fxbot.sh's Worker on your own Cloudflare account and domain, and point your fxbot at it. It's the same code: the app your devices open, a frame for each fxbot, and the relay that passes the sealed handshake. One fxbot uses about 100 of the free plan's 100,000 daily Durable Object requests.
 
-You need a Cloudflare account with a domain on it, such as `example.com`, and a checkout of fxbot with Node 22.
+You need a Cloudflare account with a domain on it, such as `example.com`, and a checkout of fxbot with Node 22.18 or newer.
 
 ## Deploy it
 
@@ -29,10 +29,10 @@ You need a Cloudflare account with a domain on it, such as `example.com`, and a 
 
 2. In Cloudflare's DNS for the domain, add a proxied `A` record for `*` pointing at `192.0.2.1`, so the frames' names reach the Worker. The custom domain makes `web.` itself.
 
-3. Build and deploy, from the repository's root:
+3. Build and deploy, from `packages/web-app`:
 
    ```sh
-   npm install && cd packages/web-app && npm install
+   npm ci
    npx wrangler login
    node build.mjs && npx wrangler deploy --env mine
    ```

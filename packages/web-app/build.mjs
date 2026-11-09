@@ -1,5 +1,5 @@
 // Builds dist/, which the Worker serves: dist/shell/ at web.fxbot.sh, and dist/frame/ at every frame's origin. It needs
-// `npm install` here and at the repository's root, for rolldown. It prints each file's SHA-256 and writes them to
+// `npm ci` here, and nothing else from the repository. It prints each file's SHA-256 and writes them to
 // dist/hashes.txt, so anyone can compare what web.fxbot.sh serves with a build of the same commit.
 import { createHash } from "node:crypto";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
