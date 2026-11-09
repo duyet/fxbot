@@ -9,7 +9,7 @@ fxbot takes it two ways: your Vercel account, signed in, or an AI Gateway key.
 
 ## Sign in
 
-**Vercel** shows under **Sign in** once fxbot has a Vercel app of its own: when the list of providers fxbot reads from fxbot.sh names one, or when the server sets [`FXBOT_VERCEL_CLIENT_ID`](/docs/reference/configuration/). Until then, [use a key](#make-a-key).
+**Vercel** signs in through fxbot's own app there, which fxbot's list of providers names. A server that sets [`FXBOT_VERCEL_CLIENT_ID`](/docs/reference/configuration/) uses its own app instead. You sign in with your own Vercel account, and use your own team's credit. Or [use a key](#make-a-key).
 
 1. In **Settings** › **Providers**, choose **Add provider**, then **Vercel**, under **Sign in**. A code shows at once.
 2. Open the link on any device: scan its QR code, choose **Copy link**, or follow the **Open** link beside the code. Sign in to Vercel, and enter the code. **Copy code** copies it.

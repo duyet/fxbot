@@ -25,7 +25,7 @@ Every provider on **Add provider**, in **Settings** › **Providers**, and in fi
 - A sign-in runs on the server. The page gets the link and the code, or the page to open, and when it expires.
   - **Device code:** ChatGPT, Grok, Vercel, Hugging Face, and OrcaRouter. Open the link on any device, and enter the code.
   - **OpenRouter** comes back to fxbot's own page when the page's address is HTTPS or on localhost. On a plain-HTTP address, or when asked, it shows a code to paste instead.
-  - **Vercel and Hugging Face** need fxbot's own app at each, which fxbot's list of providers names, or [`FXBOT_VERCEL_CLIENT_ID` and `FXBOT_HF_CLIENT_ID`](/docs/reference/configuration/) in its place. Hugging Face's is set. Vercel's sign-in shows once its app is.
+  - **Vercel and Hugging Face** need fxbot's own app at each, which fxbot's list of providers names, or [`FXBOT_VERCEL_CLIENT_ID` and `FXBOT_HF_CLIENT_ID`](/docs/reference/configuration/) in its place. A sign-in whose app isn't set doesn't show.
 - **Vertex AI** takes a service account's JSON key. fxbot makes its own hour-long tokens from it, and a new one 5 minutes before each ends.
 - Keys and tokens are stored sealed. See the [security model](/docs/explanation/security/).
 
