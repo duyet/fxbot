@@ -1,5 +1,5 @@
 {
-  "essentials": ["permissions", "fresh", "routines", "messages", "pages", "chat-rooms", "computer", "chat-rooms-computer"],
+  "essentials": ["permissions", "fresh", "routines", "messages", "pages", "chat-rooms", "computer", "chat-rooms-computer", "web-pairing"],
   "plugins": [
     {
       "name": "computer",
@@ -55,6 +55,13 @@
       "description": "Bots write reports, guides, and plans to read outside the chat, kept in the library with every version.",
       "repo": "iammrduncan/fxbot",
       "path": "plugins/pages"
+    },
+    {
+      "name": "web-pairing",
+      "description": "Your fxbot from your phone or any computer, at web.fxbot.sh, peer to peer and end-to-end encrypted, with nothing exposed.",
+      "note": "Connects to fxbot.sh's relay only once you pair a device, and finds the way through with Cloudflare's STUN.",
+      "repo": "iammrduncan/fxbot",
+      "path": "plugins/web-pairing"
     }
   ]
 }
