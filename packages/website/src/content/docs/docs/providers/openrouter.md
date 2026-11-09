@@ -9,7 +9,7 @@ OpenRouter reaches hundreds of models from many labs with one account. Some mode
 
 1. In **Settings** › **Providers**, choose **Add provider**, then **OpenRouter**, under **Sign in**.
 2. Choose **Sign in with OpenRouter**, then **Continue to OpenRouter**. OpenRouter opens in a new tab.
-3. Sign in to OpenRouter, and approve fxbot. The tab comes back to fxbot, and says you can close it. fxbot's page finishes on its own.
+3. Sign in to OpenRouter, and approve fxbot. The tab comes back to fxbot itself: to the model step in first-run setup, or to **Settings** › **Providers**, with OpenRouter added. The page you started from finishes on its own too.
 4. Pick a model, and choose **Done**. **Make it the default for new bots** starts new bots on it.
 
 OpenRouter can come back only to an fxbot whose address is HTTPS, such as a tailnet name, or on localhost. On a plain-HTTP address, such as `http://192.168.1.20:8787`, or after **Didn't come back? Use a code instead**, the card asks for a code:

@@ -96,11 +96,13 @@ async function body<T>(req: IncomingMessage, limit = 1 << 20): Promise<T> {
 }
 
 // Where a browser lands after signing in, to an MCP server or to a provider. The message can carry the server's own
-// words, so it is escaped, and the page runs nothing.
-async function cameBack(res: ServerResponse, finish: () => Promise<{ status: string; error?: string }>, done = "Signed in. You can close this tab, and go back to fxbot.") {
+// words, so it is escaped, and the page runs nothing. A provider's sign-in that's done goes on to fxbot itself, as the
+// tab may be the one the owner signed in from: first-run setup's model step, or Settings › Providers.
+async function cameBack(res: ServerResponse, finish: () => Promise<{ status: string; error?: string }>, done = "Connected. You can close this tab.", home?: () => Promise<string>) {
   let message: string;
   try {
     const { status, error } = await finish();
+    if (status === "done" && home) return void res.writeHead(303, { location: await home(), "cache-control": "no-store", "referrer-policy": "no-referrer" }).end();
     message = status === "done" ? done : `Sign-in failed: ${error}`;
   } catch (error) {
     message = `Sign-in failed: ${(error as Error).message}`;
@@ -108,9 +110,9 @@ async function cameBack(res: ServerResponse, finish: () => Promise<{ status: str
   const text = message.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   res
     .writeHead(message === done ? 200 : 400, { "content-type": "text/html; charset=utf-8", "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'", "cache-control": "no-store", "referrer-policy": "no-referrer" })
-    .end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>fxbot</title><p style="font:16px system-ui;margin:2rem">${text}</p>`);
+    .end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>fxbot</title><p style="font:16px system-ui;margin:2rem">${text}</p><p style="font:16px system-ui;margin:2rem"><a href="/">Back to fxbot</a></p>`);
 }
-const signedIn = (res: ServerResponse, query: URLSearchParams) => cameBack(res, () => fxbot.oauth.callback(query), "Connected. You can close this tab.");
+const signedIn = (res: ServerResponse, query: URLSearchParams) => cameBack(res, () => fxbot.oauth.callback(query));
 
 // A plugin's own route: the request as a web Request, and its Response streamed back. A closed connection aborts the
 // request's signal and cancels the response's body.
@@ -227,7 +229,8 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL) {
     if (!id && !action && method === "POST") return json(res, 201, await fxbot.signIns.start(await body(req), req.headers.origin));
     if (id && !action && method === "GET") return json(res, 200, fxbot.signIns.get(id));
     if (id && !action && method === "DELETE") return json(res, 200, (fxbot.signIns.cancel(id), ok));
-    if (id && action === "callback" && method === "GET") return cameBack(res, () => fxbot.signIns.callback(id, url.searchParams));
+    if (id && action === "callback" && method === "GET")
+      return cameBack(res, () => fxbot.signIns.callback(id, url.searchParams), undefined, async () => ((await fxbot.settings.get()).onboarded ? "/settings/providers" : "/"));
     if (id && action === "code" && method === "POST") return json(res, 200, await fxbot.signIns.code(id, (await body<{ code?: unknown }>(req)).code));
     return fail(404, "not found");
   }

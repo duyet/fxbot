@@ -112,7 +112,7 @@ A key goes up in `apiKey`, and Vertex AI's service account in `serviceAccount`. 
 | --- | --- | --- | --- |
 | `POST` | `/api/sign-ins` | `kind`: an entry with a sign-in, such as `chatgpt`, `grok`, `vercel`, `openrouter`, `huggingface`, or `orcarouter`. `provider`, optional: a provider of that kind to sign in again. `way`, optional: `paste`, for a code in place of a way back. | 201 and `SignIn`: `{ id, way, verificationUrl?, userCode?, url?, expiresAt }` |
 | `GET` | `/api/sign-ins/<id>` | | `SignInStatus`: `{ status, provider?, error? }`, with `status` `waiting`, `done`, or `failed` |
-| `GET` | `/api/sign-ins/<id>/callback` | `code` and `state`, from OpenRouter | A small page that says how it went |
+| `GET` | `/api/sign-ins/<id>/callback` | `code` and `state`, from OpenRouter | Done: 303 to `/`, or to `/settings/providers` once first-run setup is over. Failed: a small page that says why, with a link back. |
 | `POST` | `/api/sign-ins/<id>/code` | `code`: the one OpenRouter's page showed | `SignInStatus` |
 | `DELETE` | `/api/sign-ins/<id>` | | `{ "ok": true }` |
 
