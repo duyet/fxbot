@@ -1,14 +1,15 @@
 # Operations
 
 Getting fxbot onto a machine, keeping it running, and taking it off again, with as little as possible for the owner to know:
-- **The computer runs wherever fxbot runs.** On Ubuntu 24.04's and 22.04's `docker.io`, the computer's setup stops today, because their `docker.io` has no rootless Docker script. The computer's engine becomes rootless podman, beside whichever engine fxbot itself runs on.
+- **The computer runs wherever fxbot runs.** On Ubuntu 24.04's and 22.04's `docker.io`, the computer's setup stops today, because their `docker.io` has no rootless Docker script. The computer's engine becomes rootless podman wherever the distro has 4.9 or newer, beside whichever engine fxbot itself runs on, and rootless Docker where podman is older: Docker's `docker-ce`, Debian's `docker.io`, Fedora's `moby-engine`, or openSUSE's `docker`. `setup.sh` never installs `docker.io` again: where podman is too old, on Debian 12 and Ubuntu 22.04, it installs Docker's own `docker-ce`.
+- **Every popular distro installs, Arch included:** Debian, Ubuntu, Fedora, RHEL and its rebuilds, openSUSE, Arch, and the distros built on them, through apt, dnf, zypper, or pacman, whichever the machine has. Arch's support builds on [PR #11](https://github.com/iammrduncan/fxbot/pull/11) and credits its author. SELinux and firewalld, on by default on Fedora, RHEL, and openSUSE, are handled, not turned off.
 - **`setup.sh` checks before it changes anything,** and stops with what to do: a port in use, a Docker from snap, a CPU with no image, too little disk. It picks the engine that's already running, takes the engine and the port from the owner when asked, and shows its downloads as they go.
 - **One command takes fxbot off the machine:** `sudo fxbot uninstall`, which keeps a backup and the key unless told `--purge`, and says what's left and how to remove it.
 - **One command backs it up:** `sudo fxbot backup`, for moving to a new machine, and before an uninstall.
-- **A Mac runs it in a Linux VM.** `setup.sh` on macOS says so, with the commands, and a page walks through it: Lima with Debian 13, the distro fxbot and its computer were checked on, reached at `http://127.0.0.1:8787` on the Mac.
+- **A Mac runs it in a Linux VM.** `setup.sh` on macOS says so, with the commands, and a page walks through it: Lima with Debian 13, the distro fxbot and its computer were checked on, reached at `http://127.0.0.1:8787` on the Mac through a port the VM is made with.
 - **The docs say how:** a page to uninstall, a page for a Mac, and a page with the fix for each way an install stops.
 
-Status: planned on 2026-11-07, for 0.8.0, not built. Researched the same day against the research directive's references, nine other installers' scripts, Debian's and Ubuntu's package indexes, and the docs and source of Lima, OrbStack, and Multipass for a Mac. Where this plan says *likely*, the checklist checks it before the build relies on it. The owner's questions are answered in [fxbot today](#fxbot-today-the-owners-questions).
+Status: planned on 2026-11-07, for 0.8.0, not built. Researched the same day against the research directive's references, nine other installers' scripts, Debian's and Ubuntu's package indexes, and the docs and source of Lima, OrbStack, and Multipass for a Mac. Widened on 2026-11-09 to Arch, after reviewing [PR #11](#arch-and-pr-11), and to the other popular distros: each put to its own package manager in a throwaway container, with how the directive's references and other installers handle distros and a Mac read from their code, and the Mac's tools read again. Where this plan says *likely*, the checklist checks it before the build relies on it. The owner's questions are answered in [fxbot today](#fxbot-today-the-owners-questions).
 
 ## What the owner asked
 
@@ -23,6 +24,8 @@ Status: planned on 2026-11-07, for 0.8.0, not built. Researched the same day aga
 "I want to make the app as easy as possible for users to install and get going!"
 
 Then: "also what if user is on macos?"
+
+On 2026-11-09, after [PR #11](https://github.com/iammrduncan/fxbot/pull/11), "Add support for Arch Linux": "Lets credit them on our arch implementation from their PR. but lets do arch the right way and support it on our install. Also double check our install for mac and other popular linux distro's if needed. make sure install deals with the whole docker.io vs docker-ce rootless stuff." Then: "just do planning updates only."
 
 ## 0. Core or plugin
 
@@ -44,7 +47,7 @@ One part is the computer plugin's own: its `host/setup.sh` picks the computer's 
 | Debian 12 | podman 4.3.1, on CNI with `dnsname` | Compose 2.40.3, downloaded: apt's `docker-compose` is v1 (1.29.2) | Stops: "podman 4.3 is too old: the computer needs 4.9 or newer" |
 | Ubuntu 22.04 | `docker.io` 29.1.3: apt's podman is 3.4.4 | apt's `docker-compose-v2` 2.40.3 | Stops: "dockerd-rootless.sh isn't installed" |
 | macOS | Stops: see **6. On a Mac**, below | | |
-| No apt (Fedora, Arch) | Stops: "Elsewhere, follow the README's steps." The README has no such steps. | | |
+| No apt (Fedora, RHEL and its rebuilds, openSUSE, Arch) | Stops: "Elsewhere, follow the README's steps." The README has no such steps. [PR #11](#arch-and-pr-11) adds pacman. | | |
 | No systemd | Installs, then says "start it yourself: sudo fxbot up". Nothing starts it at boot, Settings can't update it, and on podman nothing starts the socket that Compose reaches podman through. | | |
 
 `setup.sh` and the computer's script both install with `--no-install-recommends`. podman 4.9's rootless network is slirp4netns: pasta became the default only in podman 5.0.0 ([release notes](https://github.com/containers/podman/blob/main/RELEASE_NOTES.md)). The computer installs `passt` and not `slirp4netns` (`plugins/computer/host/setup.sh:81`). So on a fresh Ubuntu 24.04, where podman came in without its recommends, a computer's first start *likely* fails for want of `slirp4netns`. The computer was checked only on podman 5.4.2.
@@ -125,6 +128,22 @@ Read from their scripts on 2026-11-07, line numbers as of that day:
 
 None of them detects podman, or sets up rootless Docker for a user of its own.
 
+### How they handle other distros, and a Mac
+
+Read from their scripts and code on 2026-11-09, at the commits named, with line numbers as of that day:
+- **OpenBot's desktop app** (`desktop/src-tauri/src/install.rs` @64ccb61) installs podman from the distro, "not a binary but a set of them (conmon, crun, netavark, slirp4netns)" (:38-41). It finds the package manager by its binary, `apt-get`, `dnf`, `zypper`, then `pacman`, and runs it through `pkexec`: `pacman -S --noconfirm` for Arch (:648-653). With none, "Install the `podman` package, then start OpenBot again." On a Mac it installs podman's own `.pkg`, pinned by SHA-256, and makes a rootful `podman machine` (`acquire.rs:282-340`). An Intel Mac gets "OpenBot cannot install the container engine on an Intel Mac. Install Podman Desktop or Docker Desktop" (:84-90).
+- **agent-browser** (`cli/src/install.rs` @d081bcd) finds `apt-get`, `dnf`, or `yum` by binary (:723-756), simulates only apt's install and aborts on any `Remv ` line (:765-835), and says in a comment that dnf and yum "do not remove packages during install" (:859-862). No pacman or zypper.
+- **Pi** (`pi.dev/install.sh`) and **fx** (`fx.sh/setup.sh`) read only `uname`. Pi uses brew, apt, or apk when their Node is new enough, and otherwise a Node tarball checked against its checksum, so Arch, Fedora, and openSUSE get the tarball. fx installs one archive for Linux or macOS.
+- **eve** runs its sandbox in Docker and says nothing of distros. **agent-desktop** on Linux asks for Ubuntu 24.04 or newer.
+- **Tailscale** (`scripts/installer.sh` @9ceb71a) branches on os-release's `ID`, never `ID_LIKE`, with derivatives named one by one: eight Arch ones on one line (:279-282), Rocky and Alma with Fedora's (:249-252). Arch gets `pacman -S tailscale --noconfirm` (:663). A Mac gets the App Store. An unknown Linux gets "Couldn't determine what kind of Linux is running. You could try the static binaries", and an unsupported one its details, to paste into a support request (:476-505).
+- **Coolify** (`scripts/install.sh` @bcd165a) maps Manjaro and EndeavourOS to Arch, and Mint, Pop!_OS, and Zorin to Ubuntu, by hand (:485-517). On Arch it runs `pacman -Sy --noconfirm --needed` for its tools (:578), a partial upgrade, and `pacman -Syu --noconfirm --needed docker docker-compose` for Docker (:773). Its Docker comes from each distro's own route: Docker's RHEL repository on Rocky (:748-752), Amazon Linux's `docker` and Compose's binary (:783-786), and get.docker.com on Fedora.
+- **get.docker.com** (@6937af6) installs on apt and dnf distros only, finds forks such as Mint through `lsb_release -u` (:391-430), and stops Arch, openSUSE, and Amazon Linux with "Unsupported distribution". A Mac gets "Please get Docker Desktop". Its `rootless-install.sh` refuses root and prints, rather than runs, each fix it needs: `uidmap` or `shadow-utils`, and subordinate ids (:145-243).
+- **Netdata's kickstart** (@0a41daa) maps derivatives by `ID` (:1124-1127), installs its own packages where it has them, and on Arch says "We do not provide native packages" and falls back to a static build (:2346, :3144-3146).
+- **k3s** (@2b723db) is the only one that handles SELinux: it installs its policy package, which pulls in `container-selinux`, labels its binary with `chcon`, and stops when SELinux is enforcing and that fails, naming the package to install (:585-727). It never says to turn SELinux off.
+- **None of them opens a port** in firewalld or ufw, or trusts an interface.
+
+So: finding the package manager by its binary (OpenBot, agent-browser) needs no list of derivatives, where reading `ID` (Tailscale, Coolify, Docker, Netdata) needs one, kept by hand. For pacman, no two agree, and none says why. For SELinux, k3s labels and never disables. And for a Mac, each points somewhere else (Docker Desktop, the App Store) or brings a VM (OpenBot's podman machine).
+
 ### Packages
 
 Read from packages.debian.org and packages.ubuntu.com on 2026-11-07:
@@ -142,13 +161,58 @@ Read from packages.debian.org and packages.ubuntu.com on 2026-11-07:
 - **Docker's own docs** say rootless needs `docker-ce-rootless-extras` when `dockerd-rootless-setuptool.sh` is missing, and that on Ubuntu 24.04 the `apparmor` package already covers that package's `rootlesskit` ([rootless](https://docs.docker.com/engine/security/rootless/), [troubleshooting](https://docs.docker.com/engine/security/rootless/troubleshoot/)).
 - **Rootless Docker's daemon** held 183 MB at rest on this machine, all the time ([the computer](../_completed/phases/computer.md#docker-rootless)). Rootless podman starts on a call and stops 5 seconds after.
 
+### Arch, and PR #11
+
+[PR #11](https://github.com/iammrduncan/fxbot/pull/11), opened on 2026-11-08 by Olen Thompson against 0.6.0's `main`, is the first try at another distro. It picks `apt-get` or `pacman` by which one exists, runs each install through the one it found, installs podman on Arch, and adds "or on Arch" to eight lines of the docs. Read on 2026-11-09, and its package names put to pacman in a throwaway Arch container:
+- **Its way in is right:** choose by the package manager, and keep one engine and one script. On Arch, podman (6.1.4) is new enough for fxbot and for the computer, and pulls in `passt` itself. `/etc/subuid` and `/etc/subgid` ship in Arch's `filesystem` package, so the computer's subordinate ids work as they are.
+- **The computer stops on every Arch machine.** It asks for `uidmap`, which Arch doesn't have: `newuidmap` comes with `shadow`, which every Arch system has. pacman answers "error: target not found: uidmap", and the script, under `set -euo pipefail`, stops.
+- **Arch's Docker can't be the computer's.** On a machine with Docker, `setup.sh` keeps it, and the computer's script then stops, since Arch's package is `docker`, neither `docker-ce` nor `docker.io`.
+- **pacman's flags.** `pacman -S --noconfirm` without `--needed` reinstalls what's there on every run. Without a fresh package list, pacman can ask its mirrors for versions they've dropped.
+- **Compose.** On Arch it asks `apt-cache` three times ("command not found"), then downloads Compose 2.40.3, though Arch packages `docker-compose` 5.7.0.
+- **Not needed:** the `nologin` and `nft` paths it sets for Arch, since Arch links `/usr/sbin` to `/usr/bin` and the old paths work.
+- **The docs** would say "Arch and its kin" untested, list `uidmap` among Arch's packages, and say the commands reference's apt steps happen "the same through pacman", which they don't.
+
+So Arch comes into this phase, built on its plan below, and its commit credits the PR with a `Co-authored-by` line for Olen Thompson, as the owner asked.
+
+### Other distros
+
+Put to each distro's own package manager in a throwaway container on 2026-11-09, except Debian's and Ubuntu's, read from their archives (madison, Launchpad, and Ubuntu's `Contents` index), and Docker's, read from `download.docker.com`. Releases past their end of life are left out: Leap 15.6 ended on 2026-04-30 ([endoflife.date](https://endoflife.date/opensuse)).
+
+| Distro, and those built on it | Packages | podman | `passt` | Its own Docker | That Docker rootless | Docker's `docker-ce` and its rootless extras | Compose 2.26 or newer |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Debian 13; Raspberry Pi OS 13 | apt | 5.4.2 | yes | `docker.io` 26.1.5 | its script in `contrib/`, `rootlesskit` 2.0.2 | yes | `docker-compose` 2.26.1 |
+| Debian 12; Raspberry Pi OS 12 | apt | 4.3.1, none newer in backports | yes | `docker.io` 20.10.24 | its script in `contrib/`, `rootlesskit` 1.1.0 | yes | none: `docker-compose` is 1.29.2 |
+| Ubuntu 26.04 | apt | 5.7.0 | yes | `docker.io` 29.1.3 | its script in `contrib/`, `rootlesskit` 2.0.2 | yes | `docker-compose-v2` 2.40.3 |
+| Ubuntu 24.04; Mint 22, Pop!_OS 24.04 | apt | 4.9.3 | yes | `docker.io` 29.1.3 | **no script** | yes | `docker-compose-v2` 2.40.3 |
+| Ubuntu 22.04; Mint 21, Pop!_OS 22.04 | apt | 3.4.4 | no | `docker.io` 29.1.3 | **no script** | yes | `docker-compose-v2` 2.40.3 |
+| Fedora 45 | dnf | 6.1.3 | yes | `moby-engine` 29.9.2 | `moby-engine-rootless-extras` | yes | `docker-compose` 5.6.0 |
+| RHEL 10; Alma 10.2, Rocky 10 | dnf | 5.8.2 | yes | none: `docker` is podman's `podman-docker` | | yes | none |
+| RHEL 9; Alma 9.8, Rocky 9 | dnf | 5.8.2 | yes | none, likewise | | yes | none |
+| Amazon Linux 2023 | dnf | **none** | yes | `docker` 25.0.18 | **no script** | no | none |
+| openSUSE Tumbleweed | zypper | 6.1.4 | yes | `docker` 29.7.2 | `docker-rootless-extras` | no | `docker-compose` 5.7.0 |
+| openSUSE Leap 16.0 | zypper | 5.4.2 | yes | `docker` 29.7.2 | `docker-rootless-extras` | no | `docker-compose` 2.33.1 |
+| Arch; Manjaro, EndeavourOS, CachyOS | pacman | 6.1.4 | yes, as podman's dependency | `docker` 29.9.3 | **no script** (`rootlesskit` 3.3.0 alone) | no | `docker-compose` 5.7.0 |
+
+Docker's own repository has `docker-ce` 29.9.3 and `docker-ce-rootless-extras` for Debian 12 and 13, Ubuntu 22.04, 24.04, and 26.04 (amd64 and arm64), Fedora 43 to 45, and RHEL and CentOS 9 and 10, under one signing key (fingerprint `9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88`; the file's SHA-256 is `1500c1f56fa9e26b9b8f42452a553675796ade0807cdce11975eb98170b3a570` for Debian and Ubuntu alike). It has nothing for Raspbian 13, openSUSE, Arch, or Amazon Linux.
+
+What the rest have in common, and where they differ:
+- **The names are the same** for `podman`, `netavark`, `aardvark-dns`, `passt`, `slirp4netns`, `nftables`, `curl`, and `ca-certificates`, on all four package managers. Only apt splits `newuidmap` into `uidmap`, and has `dbus-user-session`. dnf's `shadow-utils`, zypper's `shadow`, and pacman's `shadow` carry `newuidmap`, and every system has them.
+- **`/etc/subuid` and `/etc/subgid` are there** on all of them, in each one's base image.
+- **`/usr/sbin/nologin` and `/usr/sbin/nft` work everywhere:** Fedora 45 and Arch link `/usr/sbin` to `/usr/bin`, and the rest keep both in `/usr/sbin`.
+- **podman 6** is Fedora 45's, Tumbleweed's, and Arch's. The computer was checked on podman 5.4.2 only.
+- **`podman-docker`** puts a `docker` command on Fedora, RHEL, and Ubuntu that runs podman, so `docker info` answers there with no Docker at all. RHEL's `dnf install docker` installs it.
+- **Amazon Linux 2023 has no podman,** and its Docker can't run rootless, so the computer has no engine there.
+- **SELinux** is enforcing by default on Fedora, RHEL and its rebuilds, and openSUSE (Tumbleweed's new installs since 2025-02, and Leap 16's), and permissive on Amazon Linux 2023. Debian, Ubuntu, and Arch don't run it.
+- **firewalld** is on by default on Fedora, RHEL and their rebuilds, and openSUSE. Ubuntu ships ufw, off until the owner turns it on, as the owner's own machine had. Debian and Arch have none.
+- **cgroups v2,** which the computer's limits need, is the default on every distro above. RHEL 8 and its rebuilds still boot cgroups v1.
+
 ### Linux on a Mac
 
 Read from each tool's docs and source on 2026-11-07:
 
 | Tool | What it is | Reaching fxbot from the Mac | Starts with the Mac | Cost |
 | --- | --- | --- | --- | --- |
-| [Lima](https://github.com/lima-vm/lima) 2.3.0 | A real VM, on Apple's Virtualization framework on macOS 13.5 and later. `brew install lima`, then `limactl start --name fxbot template:debian-13`, with templates for Debian 12 and 13 and Ubuntu 22.04 to 26.04. By default up to 4 CPUs, up to 4 GiB of memory (half the Mac's, if less), and a 100 GiB disk. | Its built-in last rule forwards every TCP port the guest listens on at 127.0.0.1 to the Mac's 127.0.0.1 (`templates/default.yaml`), so `http://127.0.0.1:8787` on the Mac *likely* reaches it | `limactl start-at-login fxbot`, through launchd (`cmd/limactl/start-at-login.go`) | Free and open source |
+| [Lima](https://github.com/lima-vm/lima) 2.3.0 | A real VM, on Apple's Virtualization framework on macOS 13.5 and later. `brew install lima`, then `limactl start --name fxbot template:debian-13`, with templates for Debian 12 and 13 and Ubuntu 22.04 to 26.04. By default up to 4 CPUs, up to 4 GiB of memory (half the Mac's, if less), and a 100 GiB disk. | Its built-in last rule forwards every TCP port the guest listens on at 127.0.0.1 to the Mac's 127.0.0.1 (`templates/default.yaml`). podman doesn't listen on fxbot's port (below), so a rule of its own forwards it | `limactl start-at-login fxbot`, through launchd (`cmd/limactl/start-at-login.go`) | Free and open source |
 | [OrbStack](https://docs.orbstack.dev/machines/) | Linux "machines" with systemd, on one shared Linux kernel. `orb create debian fxbot`, then `orb -m fxbot`. | "Any servers that you run in Linux machines are accessible from Mac" at `localhost`. A server on `0.0.0.0` or `::` reaches the network too; fxbot listens on 127.0.0.1 | With OrbStack | Free for personal use; $8 a month for work |
 | [Multipass](https://documentation.ubuntu.com/multipass/) | Ubuntu VMs from Canonical | No forwarding: SSH, or Tailscale in the VM | No | Free |
 | UTM | A VM with a window, set up by hand | By hand | No | Free |
@@ -158,9 +222,18 @@ Read from each tool's docs and source on 2026-11-07:
 - **Multipass's defaults** are 1 CPU, 1 GB of memory, and a 5 GB disk (`include/multipass/constants.h`), too small for fxbot, its database, and its embedder: it needs `--memory 4G --disk 20G`.
 - **Removing it all:** `limactl delete --force fxbot` deletes the VM and everything in it, then `brew uninstall lima`. `orb delete fxbot` does the same on OrbStack.
 
+Read again on 2026-11-09:
+- **Lima 2.3.0** (2026-11-06) still has `templates/debian-13.yaml` and `limactl start-at-login`, and runs on Apple's Virtualization framework (`vz`) from macOS 13.5.
+- **Lima forwards only a port something listens on** (`pkg/guestagent/guestagent_linux.go:152-160`), and rootful podman, which `setup.sh` picks on Debian 13, doesn't listen on the ports it publishes: it forwards them through the firewall, and calls `listen()` only with `force_port_listen` set, which is off by default (containers.conf's docs). So `http://127.0.0.1:8787` on the Mac *likely* gets nothing on podman, where Docker's `docker-proxy` does listen. A rule with `static: true` forwards a port from the VM's start, over SSH, whether anything listens yet or not (`pkg/hostagent/hostagent.go:729-730, 918-933`).
+- **Colima** 0.10.3 is a Lima VM of Ubuntu 24.04 with Docker running, and `colima ssh` opens a shell in it, so `setup.sh` *likely* runs there and takes its Docker, and the computer takes podman 4.9.3.
+- **Apple's `container`** 1.7.1 (2026-11-06) now makes long-lived machines that run an image's own init, systemd included (`docs/container-machine.md`), on Apple silicon with macOS 26 only. A later way, unchecked.
+- **podman machine** is Fedora CoreOS, which installs as a whole image, so `setup.sh` stops there.
+- **OrbStack** is free for personal use only: $8 a person a month for any work, freelancers' included.
+- **Homebrew** 7.0.12 still refuses to run as root (`Library/Homebrew/brew.sh:168-201`), so `setup.sh`, run with `sudo`, can't install Lima.
+
 ## 2. Key takeaways
 
-1. **The computer's engine is rootless podman, always.** It's in apt on every distro the computer supports, it sits beside either Docker, it doesn't depend on which `docker.io` a distro ships, it costs nothing between calls, and it leaves one engine to set up and check. Keeping the machine's own Docker would mean carrying moby's script for Ubuntu, and checking it against Ubuntu's `rootlesskit` 1.1.1, older than the 2.0.2 it was checked with on Debian 13. A computer already set up on rootless Docker keeps it.
+1. **The computer's engine is rootless podman where the distro has 4.9 or newer, and the machine's own Docker, run rootless, where it doesn't.** podman 4.9 or newer is in every distro's packages but Debian 12's, Ubuntu 22.04's, and Amazon Linux 2023's. It sits beside either Docker, doesn't depend on whose `docker.io` this is, costs nothing between calls, and leaves one engine to set up and check. Where podman is older, the installed Docker runs rootless from its own packages: `docker-ce-rootless-extras`, Debian's `contrib/`, Fedora's `moby-engine-rootless-extras`, or openSUSE's `docker-rootless-extras`. Only Ubuntu's `docker.io` (22.04 and 24.04), Arch's `docker`, and Amazon Linux's have no way to, and carrying moby's script for them isn't needed: on 24.04 and Arch podman takes the computer, and on 22.04 `docker-ce` does. A computer already set up keeps its engine.
 2. **Check first, then change.** Every stop that `setup.sh` can see coming, it sees before apt runs: Coolify, CasaOS, and Tailscale check the system first, and Coolify names the fix.
 3. **The engine that's running wins,** as in OpenBot's desktop app, which takes a Docker that answers before it installs podman, and keeps its choice. A running Docker daemon is a stronger sign of what the owner uses than an installed podman, and it keeps podman's bridge clear of Docker's rules. The owner can name one with `FXBOT_ENGINE`.
 4. **Long steps show themselves.** Compose's own pull progress, as Immich shows, before the service starts.
@@ -168,30 +241,46 @@ Read from each tool's docs and source on 2026-11-07:
 6. **Record what `setup.sh` installed, and say it at uninstall.** Pi-hole and k3s remove only what they added. fxbot lists it with the command to remove it, since the owner may now use podman or Docker for other things. Before it installs, apt's own simulation shows whether anything would be removed, and `setup.sh` stops if so, as agent-browser does.
 7. **A backup command.** Uninstall, moving to a new machine, and [Back up fxbot](https://fxbot.sh/docs/how-to/back-up/) all need the same four steps, so they become one.
 8. **Every stop has its fix on one page,** under the words `setup.sh` prints.
-9. **On a Mac, a Linux VM, and a page that says so.** Lima with Debian 13: free, a whole machine, the distro fxbot and its computer were checked on, forwarded to the Mac's own `127.0.0.1`, started at login by launchd, and gone with one `limactl delete`. `setup.sh` on macOS stops with those commands, before anything else, and an agent on the Mac can run them. A native macOS install would mean launchd units, a second `fxbot` command, and no computer, for the same Linux VM that any engine on a Mac runs anyway.
-10. **Not taken:** a `doctor` command, since `fxbot status` saying whether fxbot answers covers the common case, and `--dry-run`, since the checks now run first and [agent-setup.txt](../../packages/website/public/agent-setup.txt) has an agent read the script before it runs.
+9. **On a Mac, a Linux VM, and a page that says so.** Lima with Debian 13: free, a whole machine, the distro fxbot and its computer were checked on, forwarded to the Mac's own `127.0.0.1` by a static rule, since podman doesn't listen on its ports, started at login by launchd, and gone with one `limactl delete`. `setup.sh` on macOS stops with those commands, before anything else, and an agent on the Mac can run them. A native macOS install would mean launchd units, a second `fxbot` command, and no computer, for the same Linux VM that any engine on a Mac runs anyway.
+10. **Find the package manager by its binary,** as OpenBot and agent-browser do. Every package fxbot needs has one name per package manager, so apt, dnf, zypper, and pacman cover Mint, Pop!_OS, Raspberry Pi OS, Rocky, Alma, Oracle, Manjaro, EndeavourOS, and CachyOS with no list to keep, where Tailscale, Coolify, and Docker each keep one by hand. os-release is read only for Docker's repository and for the words of a stop.
+11. **Never install `docker.io`.** Where a machine has no engine and its distro's podman is older than 4.9 (Debian 12, Ubuntu 22.04, and Mint 21, Pop!_OS 22.04, and Raspberry Pi OS 12), `setup.sh` installs Docker's own `docker-ce`, from Docker's repository with its key pinned, as Docker's docs and get.docker.com do, and Coolify does on Rocky. It runs fxbot, and runs rootless for the computer.
+12. **Only apt removes packages unasked.** dnf, zypper, and pacman each refused a conflict without a question, checked by installing `podman-docker` over their Docker. So the simulate step stays apt's, as agent-browser keeps it.
+13. **Arch the Arch way:** `pacman -S --needed --noconfirm`, never `-Sy` alone, which is a partial upgrade Arch doesn't support, and never `-Syu` unasked, which upgrades the whole system. An old package list stops with `sudo pacman -Syu` to run first. Arch's `newuidmap` is in `shadow`, which every Arch system has, so it asks for no `uidmap`.
+14. **SELinux: label, never disable,** as k3s does. `:z` on fxbot's folders and its key, in the compose file, labels them on SELinux and does nothing elsewhere, on either engine. The computer's system user needs its podman storage labelled like `/var/lib/containers`, which podman's own troubleshooting names.
+15. **firewalld: keep podman's trust across reloads.** netavark trusts its subnets until firewalld reloads, then the containers lose their DNS, as they did under ufw. Its own `netavark-firewalld-reload.service` keeps them, and no distro turns it on. None of the installers read touches a firewall.
+16. **Not taken:** a `doctor` command, since `fxbot status` saying whether fxbot answers covers the common case, and `--dry-run`, since the checks now run first and [agent-setup.txt](../../packages/website/public/agent-setup.txt) has an agent read the script before it runs.
 
 ## 3. Implementation
 
 ### The computer's engine (`plugins/computer/host/setup.sh`)
 
-The engine is podman unless `--engine` names one, or the user is already set up on rootless Docker:
+The computer needs a rootless engine for `fxbot-computer`, whatever fxbot itself runs on. The script takes the first of:
+1. **The engine the user is already set up on,** so a second run changes nothing: rootless Docker when `$home/.config/systemd/user/docker.service` is there, and podman otherwise.
+2. **`--engine`,** when given.
+3. **Rootless podman, 4.9 or newer,** installed or in the package manager: every distro in [Other distros](#other-distros) but Debian 12, Ubuntu 22.04, and Amazon Linux 2023. It sits beside either Docker, and starts on a call.
+4. **Rootless Docker, from the Docker that's installed,** where that Docker can run rootless: `docker-ce` with `docker-ce-rootless-extras` from Docker's repository, which `docker-ce` came from; Debian's `docker.io` with its script in `contrib/` and `rootlesskit`; Fedora's `moby-engine` with `moby-engine-rootless-extras`; openSUSE's `docker` with `docker-rootless-extras`.
+5. **Otherwise it stops, with the way out.** Only Ubuntu 22.04 with `docker.io`, and Amazon Linux 2023, come here: "the computer needs podman 4.9 or newer, or a Docker that runs rootless. This machine's podman is 3.4.4, and Ubuntu's docker.io can't run rootless. Switch to Docker's own docker-ce, which can: https://fxbot.sh/docs/how-to/fix-an-install/#docker-io".
 
 ```bash
-# Rootless podman, beside whichever engine fxbot runs on: it's in apt wherever the computer runs, Ubuntu's docker.io
-# has no rootless script, and podman starts on a call where rootless Docker's daemon runs all the time. A user set up
-# on rootless Docker before keeps it.
+# Rootless podman when the system has 4.9 or newer, beside whichever engine fxbot runs on: it starts on a call, and
+# doesn't depend on whose Docker this is. Where podman is older, the installed Docker, run rootless, if it can be.
 if [ -z "$engine" ]; then
-  if [ -f "$home/.config/systemd/user/docker.service" ]; then engine=docker; else engine=podman; fi
+  if [ -f "$home/.config/systemd/user/docker.service" ]; then engine=docker
+  elif [ -n "$(podman_at_least 4.9)" ]; then engine=podman
+  elif [ -n "$(docker_rootless_package)" ]; then engine=docker
+  else die "the computer needs podman 4.9 or newer, or a Docker that runs rootless. …"
+  fi
 fi
 ```
 
-This replaces lines 72-76, which read `FXBOT_ENGINE` from the release's `.env`, and preferred podman only when it was installed.
-- **Packages:** `podman passt slirp4netns`, beside `uidmap dbus-user-session nftables curl`. podman 4.9 needs `slirp4netns`, which it only recommends.
-- **Too old:** "podman 4.3 is too old: the computer needs 4.9 or newer, as Debian 13 and Ubuntu 24.04 have." Debian 12 and Ubuntu 22.04 get this, on any engine.
-- **The docker branch stays,** for a user already on it and for `--engine docker`. Taking it out is [open question 2](#5-open-questions).
+This replaces lines 72-76, which read `FXBOT_ENGINE` from the release's `.env`, and preferred podman only when it was installed. `podman_at_least` reads the installed version, or the package manager's candidate (`candidate`, under [Package managers](#package-managers)). `docker_rootless_package` names the package from step 4 for the Docker that's installed, or nothing.
+- **Packages,** through `setup.sh`'s `install_packages`, by the names under [Package managers](#package-managers): for podman, `podman passt slirp4netns`, since podman 4.9 needs `slirp4netns` and only recommends it; for Docker, step 4's package and `slirp4netns`; and on apt, `uidmap` and `dbus-user-session` too. Always `nftables` and `curl`.
+- **Two checks, before anything changes:** cgroups v2 (`stat -fc %T /sys/fs/cgroup` is `cgroup2fs`), without which the computers' limits silently do nothing, as on RHEL 8; and user namespaces a user may make (`kernel.unprivileged_userns_clone` isn't 0, as Arch's `linux-hardened` sets it, and `user.max_user_namespaces` isn't 0).
+- **Too old, with no Docker to fall back on:** Debian 12 on its podman gets "podman 4.3.1 is older than the 4.9 the computer needs. Docker's own docker-ce runs rootless here: https://fxbot.sh/docs/how-to/fix-an-install/#podman". `setup.sh` no longer leaves a new install there ([its engine](#setupsh)).
+- **The docker branch now does real work,** on Debian 12 and Ubuntu 22.04, where podman is too old, as well as for a user already on it and for `--engine docker`. [Open question 2](#5-open-questions) keeps it.
+- **SELinux:** the computers' homes are named volumes (`plugins/computer/fxbot/server.ts:508`), which the engine labels itself. But `fxbot-computer` is a system user with no login shell, so SELinux's rules for home folders skip it (libsemanage's `genhomedircon.c:575-577`), and its podman's storage, `/var/lib/fxbot-computer/.local/share/containers`, keeps `/var/lib`'s label, not the one container-selinux gives podman's storage (`container.fc:103-113`). podman's troubleshooting guide names this case. So where `selinuxenabled` answers, the script gives that folder `/var/lib/containers`'s labels: `semanage fcontext -a -e /var/lib/containers "$home/.local/share/containers"`, then `restorecon -R`, with `policycoreutils-python-utils` for `semanage` (dnf's and zypper's name alike). *Likely*: read from source, and checked on a Fedora VM before the docs say so.
 - **The plugin's code doesn't change:** it reads the engine through the Docker API's `/info` and `/version`, which podman answers (`plugins/computer/fxbot/server.ts:977-983`).
-- **Its docs:** the computer's `README.md`, [Give bots a computer](https://fxbot.sh/docs/how-to/give-bots-a-computer/), and [The computer](https://fxbot.sh/docs/reference/computer/) say the computers run on rootless podman, whatever fxbot runs on, and drop Ubuntu's `docker.io`. The computer goes to 0.3.2 for its README.
+- **Its docs:** the computer's `README.md`, [Give bots a computer](https://fxbot.sh/docs/how-to/give-bots-a-computer/), and [The computer](https://fxbot.sh/docs/reference/computer/) say the computers run on rootless podman where the distro has 4.9 or newer, whatever fxbot runs on, and on the installed Docker, run rootless, where it doesn't, with each package manager's packages, and drop Ubuntu's `docker.io`. The computer goes to 0.3.2 for its README.
 
 The script comes from the release's tag (`deploy/fxbot:302`), so the fix reaches installs with the release.
 
@@ -202,7 +291,8 @@ The script comes from the release's tag (`deploy/fxbot:302`), so the fix reaches
 | Check | When it fails |
 | --- | --- |
 | `uname -s` is Linux | On macOS, stops with the Mac's way, below. On Windows' own shells (`MINGW`, `MSYS`, `CYGWIN`), stops: "fxbot runs on Linux. On Windows, run this in WSL 2's Ubuntu, with systemd on." Anything else: "fxbot runs on Linux, and this is <system>." |
-| apt | Stops: "setup.sh is for Debian, Ubuntu, and distros built on them, which have apt." With a link to the commands reference, in place of the README |
+| A package manager it knows: the first of `apt-get`, `zypper`, `dnf`, and `pacman` (zypper before dnf, since openSUSE can carry dnf too) | Stops: "setup.sh installs through apt, dnf, zypper, or pacman: on Debian, Ubuntu, Fedora, RHEL and its rebuilds, openSUSE, Arch, and the distros built on them. This is <PRETTY_NAME from os-release>." With a link to the commands reference, in place of the README |
+| Packages can be installed: no `/run/ostree-booted` and no `transactional-update` | Stops: "this system installs software as a whole image (Fedora Silverblue or CoreOS, openSUSE MicroOS), so setup.sh can't add packages to it." |
 | systemd | Stops: "fxbot needs systemd, to start at boot and to update from Settings." On WSL, it adds how to turn systemd on. See [open question 3](#5-open-questions) |
 | The CPU is x86_64 or aarch64 | Stops: "fxbot's images are for x86_64 and arm64, and this machine is armv7l." |
 | The port is free, unless fxbot holds it | Stops: "another program listens on port 8787. Run this again with FXBOT_PORT set to a free one, such as: curl -fsSL https://fxbot.sh/setup.sh \| sudo FXBOT_PORT=8790 bash" |
@@ -220,13 +310,14 @@ The port check is today's (`setup.sh:237`), moved up: it stops when something an
 
 **The engine,** for a fresh install:
 1. `FXBOT_ENGINE`, when set.
-2. docker, when `docker info` answers: its daemon is running.
+2. docker, when `docker info` answers: its daemon is running. A `docker` that says it's podman (`docker --version`), from `podman-docker`, counts as podman.
 3. podman 4 or newer, when it's installed.
 4. docker, when it's installed and not a snap. `setup.sh` starts it, as today.
-5. podman from apt, when apt has 4 or newer.
-6. `docker.io` from apt.
+5. podman from the package manager, when it has **4.9** or newer, so the computer can use it too: every distro in [Other distros](#other-distros) but three.
+6. Docker's own `docker-ce`, from Docker's repository, on Debian 12 and Ubuntu 22.04 and the distros built on them, whose podman is older. `setup.sh` adds the repository as [Docker's docs](https://docs.docker.com/engine/install/ubuntu/) and get.docker.com do: the key to `/etc/apt/keyrings/docker.asc`, checked against its SHA-256 as Compose's download is, and `/etc/apt/sources.list.d/docker.sources` for `ubuntu` and `$UBUNTU_CODENAME` when os-release has one (Mint and Pop!_OS do), or `debian` and `$VERSION_CODENAME`. Then `docker-ce docker-ce-cli containerd.io docker-compose-plugin`. Then the computer's rootless Docker comes from the same repository.
+7. Otherwise it stops: "this system's packages have no podman 4.9 or newer, and Docker publishes no docker-ce for it. Install podman or Docker, then run this again." On Amazon Linux 2023, that's `sudo dnf install docker`, and step 4 takes it.
 
-Only step 2 is new: on a machine with a running Docker and an installed podman, a new install takes docker, where today it takes podman.
+Step 2 is new: on a machine with a running Docker and an installed podman, a new install takes docker, where today it takes podman. Steps 5 to 7 are new: **`setup.sh` never installs `docker.io`,** the Docker that can't run rootless on Ubuntu 22.04 and 24.04. Today it installs it on Ubuntu 22.04, where it then leaves the computer nowhere to run. An install keeps the engine it has.
 
 **The downloads,** seen: before `systemctl start fxbot`, `"$install/fxbot" compose pull`, with Compose's own progress. The service then starts on images that are already here. The embedder's model still downloads on its first start, as the end says.
 
@@ -240,6 +331,38 @@ iface=$(podman network inspect "${COMPOSE_PROJECT_NAME:-fxbot}_default" --format
 
 ufw skips a rule it has. `fxbot down` removes the network, so the next start may get another bridge, and adds its rule; uninstall removes every rule marked `fxbot`. It is in `start()`, not `setup.sh`, so `fxbot update` brings it to the installs that need it, such as the owner's from 2026-11-07, and so does a ufw turned on later. [Open question 4](#5-open-questions).
 
+**firewalld,** on by default on Fedora, RHEL and its rebuilds, and openSUSE, lets podman's DNS in by itself, until it reloads. Read from netavark's source (2.1.0, and 1.17.2 for RHEL 9) and firewalld's docs on 2026-11-09:
+- netavark puts each network's subnet in firewalld's `trusted` zone (`src/firewall/firewalld.rs:984-998`), whichever of its drivers the distro builds: nftables on Fedora, RHEL 10, and Tumbleweed, iptables on RHEL 9.
+- That change is to the running firewalld only, and `firewall-cmd --reload` drops every such change (`firewall-cmd`'s docs). So after a reload, which an owner or a package can run, the containers' DNS fails as it did under ufw, `EAI_AGAIN db`, until fxbot restarts.
+- netavark ships `netavark-firewalld-reload.service`, which puts its rules back after each reload (`contrib/systemd/system/netavark-firewalld-reload.service.in`). No distro turns it on: Fedora's, RHEL's, and openSUSE's presets leave it off.
+- Docker needs nothing: it keeps a `docker` zone of its own for its bridges, and puts them back after a reload (moby's `daemon/libnetwork/iptables/firewalld.go:286-305`).
+
+So `start()`, on podman with firewalld running (`firewall-cmd --state`), turns it on, beside ufw's rule:
+
+```bash
+# firewalld forgets podman's trusted subnets on a reload, and with them the containers' DNS; netavark's unit puts them back.
+systemctl enable --now netavark-firewalld-reload.service >/dev/null 2>&1 || true
+```
+
+Uninstall leaves it on, since podman's other networks need it too. [Open question 14](#5-open-questions).
+
+**SELinux,** enforcing on Fedora, RHEL and its rebuilds, and openSUSE (Tumbleweed's new installs since February 2025, and Leap 16's), keeps a container from a host folder that isn't labelled for containers. Read from Compose's, Docker's, and podman's source on 2026-11-09:
+- `:z` on a bind mount labels it for containers, through Compose on either engine (compose-go's `format/volume.go:101-113`, podman's compat API), and does nothing where SELinux is off (podman's `libpod/container_internal_common.go:3152-3155`, go-selinux's `label/label_linux.go:116-119`). It works on a single file too.
+- Compose's file `secrets:` can't take it: Compose mounts them through the Mount API, which has no SELinux option (`pkg/compose/create.go:1335-1343`). fxbot's key comes in that way (`deploy/compose.yaml:60-61`).
+- Docker's own `docker-ce` leaves SELinux off for its containers (`--selinux-enabled` is false by default), so they read any folder. Fedora's `moby-engine` and openSUSE's `docker` turn it on.
+
+So `deploy/compose.yaml` adds `:z` to its three folders, and brings the key in as a read-only bind at the same `/run/secrets/fxbot_key`, in place of `secrets:`:
+
+```yaml
+    volumes:
+      - ${FXBOT_ROOT:-}/var/lib/fxbot/data:/var/lib/fxbot/data:z
+      - ${FXBOT_ROOT:-}/var/lib/fxbot/backups:/var/lib/fxbot/backups:z
+      - ${FXBOT_ROOT:-}/var/lib/fxbot/control:/var/lib/fxbot/control:z
+      - ${FXBOT_ROOT:-}/etc/fxbot/secret.key:/run/secrets/fxbot_key:ro,z
+```
+
+Nothing in `setup.sh`, nothing turned off, and every install gets it with its next update. Of the installers read, only k3s handles SELinux, and it labels and never disables. Immich and Home Assistant document no labels, and Nextcloud AIO turns labels off for its Docker socket. [Open question 13](#5-open-questions).
+
 **A database without its `.env`:** when `setup.sh` starts fresh and finds `fxbot_pgdata`, it starts the database alone, sets the new password over its local socket, which trusts local connections as `fxbot restore` already relies on, and goes on:
 
 ```bash
@@ -249,7 +372,7 @@ ufw skips a rule it has. `fxbot down` removes the network, so the next start may
 
 The owner's bots, chats, and providers come back, with the key that `setup.sh` leaves in `/etc/fxbot`. If the key is gone too, the sealed keys and tokens can't be opened, and Settings asks for them again.
 
-**What it installed:** one `install_packages` function runs every `apt-get install`. It first runs the same install with `--simulate`, and stops if apt would remove any package: "installing podman would remove <package>. Nothing changed." Then it installs, and puts each package that wasn't on the machine before on a line of `/etc/fxbot/packages`. The computer's script appends its own the same way. Uninstall reads the file.
+**What it installed:** each package that wasn't on the machine before goes on a line of `/etc/fxbot/packages`, after a first line naming the package manager. The computer's script appends its own the same way. When `setup.sh` added Docker's repository, its two files go there too, `/etc/apt/sources.list.d/docker.sources` and `/etc/apt/keyrings/docker.asc`. Uninstall reads the file.
 
 **The end** names the real address, with the port, and each way in:
 ```
@@ -263,6 +386,34 @@ The Tailscale line names `tailscale` as installed or not, with its download page
 
 **The guard:** the script's body becomes a `main` function, called on its last line, so a download cut off midway runs nothing.
 
+### Package managers
+
+One `install_packages` function runs every install, in `setup.sh` and, through the same few lines, in the computer's script, with the package manager the checks found. The conflicts and `--needed` were run against dnf, zypper, and pacman in throwaway containers on 2026-11-09, by installing `podman-docker` over each one's Docker; the other rows are each manager's own flags:
+
+| | apt | dnf | zypper | pacman |
+| --- | --- | --- | --- | --- |
+| On | Debian, Ubuntu, Mint, Pop!_OS, Raspberry Pi OS | Fedora, RHEL, Alma, Rocky, Oracle, Amazon Linux | openSUSE Tumbleweed and Leap | Arch, Manjaro, EndeavourOS, CachyOS |
+| Install | `apt-get install -y -qq --no-install-recommends`, after `apt-get update -qq` | `dnf install -y -q --setopt=install_weak_deps=False` | `zypper --non-interactive install --no-recommends` | `pacman -S --needed --noconfirm` |
+| Removes a package to install one? | **Yes, unasked.** So `--simulate` runs first, and any `Remv` line stops it, changing nothing: "installing podman would remove <package>." agent-browser does the same. | No: "installed package moby-engine conflicts with … podman-docker", and it asks for `--allowerasing` | No: `--non-interactive` answers the conflict with **c**, cancel | No: "podman-docker and docker are in conflict", and `--noconfirm` keeps docker |
+| Package lists | `apt-get update` | dnf refreshes old ones itself | zypper refreshes them itself | **not refreshed:** a failed install stops with "if pacman's package lists are old, update the system first (sudo pacman -Syu), then run this again" |
+| There before? | `dpkg -s` | `rpm -q` | `rpm -q` | `pacman -Q` |
+| A version on offer (`candidate`) | `apt-cache policy` | `dnf repoquery --latest-limit 1` | `zypper info` | `pacman -Si` |
+| Uninstall prints | `sudo apt-get purge …` | `sudo dnf remove …` | `sudo zypper remove --clean-deps …` | `sudo pacman -Rns …` |
+
+`--needed` skips what's there ("docker-1:29.9.3-1 is up to date -- skipping"), so a second run reinstalls nothing. pacman never runs `-Sy` alone, which would be a partial upgrade, and Arch doesn't support those ([System maintenance](https://wiki.archlinux.org/title/System_maintenance#Partial_upgrades_are_unsupported)). Nor does it run `-Syu` unasked, which would upgrade the owner's whole system. Of the references, only Coolify runs pacman for Docker, with `-Syu`, and `-Sy` for its tools.
+
+**The names.** `podman`, `netavark`, `aardvark-dns`, `passt`, `slirp4netns`, `nftables`, `curl`, and `ca-certificates` are the same on all four. The rest:
+
+| Need | apt | dnf | zypper | pacman |
+| --- | --- | --- | --- | --- |
+| `newuidmap`, for the computer | `uidmap` | there: `shadow-utils` | there: `shadow` | there: `shadow` |
+| The computer's user bus | `dbus-user-session` | there | there | there: systemd needs `dbus-units` |
+| Compose, when none answers | `docker-compose-plugin`, `docker-compose-v2`, or `docker-compose`, as today | `docker-compose` (Fedora) | `docker-compose` | `docker-compose` |
+| The computer's rootless Docker | `docker-ce-rootless-extras`; `rootlesskit` beside Debian's `docker.io` | `docker-ce-rootless-extras`; `moby-engine-rootless-extras` | `docker-rootless-extras` | none |
+| Names for a podman on CNI | `golang-github-containernetworking-plugin-dnsname`, Debian 12's | none | none | none |
+
+Where no package has Compose 2.26 or newer (RHEL and its rebuilds, Amazon Linux 2023), `setup.sh` downloads Compose 2.40.3, as it does today.
+
 ### On a Mac
 
 `setup.sh` on macOS stops, changing nothing, with what to run:
@@ -270,7 +421,7 @@ The Tailscale line names `tailscale` as installed or not, with its download page
 ```
 fxbot setup stopped: fxbot runs on Linux, and this is macOS. Run it in a Linux VM on this Mac:
   brew install lima
-  limactl start --name fxbot template:debian-13
+  limactl start --name fxbot --set '.portForwards += [{"guestPort": 8787, "static": true}]' template:debian-13
   limactl shell fxbot
 Then run the same command again in there. See https://fxbot.sh/docs/how-to/run-on-a-mac/
 ```
@@ -280,13 +431,14 @@ When `brew` isn't installed, the first line is Lima's own install page instead. 
 **Run fxbot on a Mac**, a new how-to:
 1. **Install Lima and make the VM:** the three commands above. Lima's defaults, up to 4 CPUs and 4 GiB of memory, and a 100 GiB disk that fills as it's used, are enough for fxbot and a few computers.
 2. **Install fxbot in it:** `curl -fsSL https://fxbot.sh/setup.sh | sudo bash`, in `limactl shell fxbot`, as on any Linux machine. Lima's user has `sudo` without a password.
-3. **Open it on the Mac:** `http://127.0.0.1:8787`, which Lima forwards from the VM: *likely*, and the Mac check below confirms it before the page says so. Everything works there, installing the app included, as on the machine itself.
+3. **Open it on the Mac:** `http://127.0.0.1:8787`, which Lima forwards from the VM by the static rule it was made with, since podman doesn't listen on the port itself: *likely*, and the Mac check below confirms it before the page says so. With another `FXBOT_PORT`, the rule names that port. Everything works there, installing the app included, as on the machine itself.
 4. **Start it with the Mac:** `limactl start-at-login fxbot`. Inside the VM, `fxbot.service` starts fxbot.
 5. **From a phone:** Tailscale in the VM, as [Reach it from other devices](https://fxbot.sh/docs/how-to/reach-it/) says, so the VM has a tailnet name of its own. Not while the Mac sleeps: a Mac that stays on, such as a Mac mini, keeps fxbot reachable and its routines on time.
 6. **Commands:** every `sudo fxbot …` runs in the VM: `limactl shell fxbot sudo fxbot status`.
 7. **Back up off the VM:** `limactl shell fxbot sudo fxbot backup`, then copy its folder and the key out through the shell, as `sudo tar -C /var/lib/fxbot/backups -cf - <folder>` and `sudo cat /etc/fxbot/secret.key`, each redirected into a file on the Mac. Lima's mount of the Mac's home is read-only.
 8. **Remove it:** `sudo fxbot uninstall` in the VM keeps the VM. `limactl delete --force fxbot` deletes the VM with fxbot and everything in it, then `brew uninstall lima`.
 9. **Already have OrbStack?** `orb create debian fxbot`, then `orb -m fxbot`, and the same steps from 2, with OrbStack's own forwarding to `localhost`. Free for personal use, and paid for work.
+10. **Already have Colima?** `colima ssh`, and the same steps from 2, on its Ubuntu 24.04 and its Docker: *likely*, unchecked, so the page names it as untried.
 
 **`agent-setup.txt`:** on a Mac, the agent no longer stops at step 1. It asks whether to set fxbot up in a Lima VM on this Mac, says what that installs (Lima, through Homebrew, and a VM of up to 4 GiB of memory), and with a yes runs the steps above, each inside the VM through `limactl shell fxbot -- <command>`. Lima's `sudo` asks no password, so the agent runs `setup.sh` itself. Homebrew, when missing, is the person's to install. Asking which Linux machine to use stays as the other choice.
 
@@ -331,13 +483,14 @@ Uninstall fxbot? [y/N]
 | `/var/lib/fxbot`: the backups and plugins' files | kept | removed |
 | `/etc/fxbot`: the key and the app's settings | kept | removed |
 | The user `fxbot` | kept: it owns what's kept | removed |
-| Packages `setup.sh` installed | listed, with `apt-get purge` | listed |
+| Packages `setup.sh` installed | listed, with the package manager's own command ([Package managers](#package-managers)) | listed |
+| Docker's repository, when `setup.sh` added it | listed, with its two files | listed |
 | podman, Docker, and their other containers | left alone | left alone |
 
 - **The order:** ask; back up; remove the computer's override, then `fxbot computer off`, so its script doesn't start fxbot again; disable and stop the units; `compose down --volumes --rmi all`; the ufw rules; the files; with `--purge`, the user. Each step that fails says so and the rest go on, so a second run finishes what the first left.
 - **The computer's script** is the copy in `/opt/fxbot/computer-setup.sh`, which `fxbot computer on` saved, so uninstall works with no network. It downloads it only when there's no copy.
 - **`--yes`** skips the question, for an agent or a script. With no terminal and no `--yes`, it stops: "add --yes to uninstall without a question".
-- **What it prints last:** what it kept and how to restore it (`curl -fsSL https://fxbot.sh/setup.sh | sudo bash`, then `sudo fxbot restore /var/lib/fxbot/backups/<date>-uninstall`); the packages from `/etc/fxbot/packages`, with `sudo apt-get purge <them>` "if nothing else here uses them"; `sudo tailscale serve reset` when `tailscale serve status` shows port 8787; and, for the owner's devices, that the installed app goes from the home screen like any other, and that keys made for fxbot at providers are revoked there.
+- **What it prints last:** what it kept and how to restore it (`curl -fsSL https://fxbot.sh/setup.sh | sudo bash`, then `sudo fxbot restore /var/lib/fxbot/backups/<date>-uninstall`); the packages from `/etc/fxbot/packages`, with the package manager's command (`sudo apt-get purge <them>`, `sudo dnf remove`, `sudo zypper remove --clean-deps`, or `sudo pacman -Rns`) "if nothing else here uses them", and Docker's repository's two files when `setup.sh` added them; `sudo tailscale serve reset` when `tailscale serve status` shows port 8787; and, for the owner's devices, that the installed app goes from the home screen like any other, and that keys made for fxbot at providers are revoked there.
 - **Running from `/opt/fxbot`:** bash has the script open, so removing the folder doesn't stop it, and the last lines print from memory.
 - **A 0.2 install that moved** also has `/opt/fxbot/{repo,releases,current}`, which go with `/opt/fxbot`, and the machine's Postgres database, which uninstall names with its `dropdb` line, as `fxbot status` does.
 
@@ -350,12 +503,12 @@ Docs only, in [Run a checkout beside a release](https://fxbot.sh/docs/how-to/che
 ### The docs
 
 - **New:** [Uninstall fxbot](https://fxbot.sh/docs/how-to/uninstall/), a how-to: the command, `--purge`, what's left and how to remove it, installing again on a backup, and the steps by hand.
-- **New:** **Fix an install that stopped**, a how-to: each line `setup.sh` prints after `fxbot setup stopped:`, and its fix, with ufw's `EAI_AGAIN db` and Docker's snap.
+- **New:** **Fix an install that stopped**, a how-to: each line `setup.sh` prints after `fxbot setup stopped:`, and its fix, with ufw's `EAI_AGAIN db` and Docker's snap. And the computer's: Ubuntu 22.04's `docker.io` (`#docker-io`), switched to `docker-ce` by `sudo fxbot down`, `sudo apt-get remove docker.io`, which keeps `/var/lib/docker`, Docker's repository and `docker-ce` as [Docker's docs](https://docs.docker.com/engine/install/ubuntu/) give them, and `sudo fxbot up`; and a podman too old for the computer (`#podman`). And pacman's old package lists (`#pacman`).
 - **New:** **Run fxbot on a Mac**, the how-to above.
-- **Changed:** [Back up fxbot](https://fxbot.sh/docs/how-to/back-up/) uses `fxbot backup`, and gains **Move to a new machine**. [Commands](https://fxbot.sh/docs/reference/commands/): `backup`, `uninstall`, `FXBOT_ENGINE`, `FXBOT_PORT`, and the checks. [What setup.sh creates](https://fxbot.sh/docs/reference/install-layout/): `/etc/fxbot/packages`, ufw's rule, and what uninstall removes. [Your first fxbot](https://fxbot.sh/docs/tutorials/first-fxbot/): the CPU, memory, and disk under **You need**, and, for a Mac, a link to its page. The home page's install step and its **Machine** line (`src/home.tsx:77`, `src/home.tsx:191`) add "or a Mac, in a Linux VM". The computer's pages, as above.
+- **Changed:** [Back up fxbot](https://fxbot.sh/docs/how-to/back-up/) uses `fxbot backup`, and gains **Move to a new machine**. [Commands](https://fxbot.sh/docs/reference/commands/): `backup`, `uninstall`, `FXBOT_ENGINE`, `FXBOT_PORT`, and the checks. [What setup.sh creates](https://fxbot.sh/docs/reference/install-layout/): `/etc/fxbot/packages`, ufw's rule, and what uninstall removes. [Your first fxbot](https://fxbot.sh/docs/tutorials/first-fxbot/): the CPU, memory, and disk under **You need**, the distros, and, for a Mac, a link to its page. The home page's install step and its **Machine** line (`src/home.tsx:77`, `src/home.tsx:191`) name the distros, as [open question 12](#5-open-questions) has them, and add "or a Mac, in a Linux VM". [Commands](https://fxbot.sh/docs/reference/commands/) gains a table of the distros, the package manager each uses, and the engines fxbot and the computer get on each. The computer's pages, as above, with the packages on each package manager, in place of PR #11's line. `agent-setup.txt`'s first check names the distros too.
 - **`agent-setup.txt`:** its checks say `setup.sh` checks too, and a last section says how to uninstall, with the owner's yes first and `--yes` in the command.
 - **README:** a row each for `backup` and `uninstall` in the commands table, and a line each under Install on a Mac and on how to uninstall. `src/sidebar.ts` lists the three pages.
-- **`CHANGELOG.md`,** under `## Unreleased`: the computer on Ubuntu's `docker.io`, the checks, `fxbot backup`, and `fxbot uninstall`. No migration, and nothing in the plugin API.
+- **`CHANGELOG.md`,** under `## Unreleased`: the computer on Ubuntu's `docker.io`, the other distros, with Arch's line thanking Olen Thompson for [PR #11](https://github.com/iammrduncan/fxbot/pull/11), the checks, `fxbot backup`, and `fxbot uninstall`. No migration, and nothing in the plugin API.
 
 ### Cost
 
@@ -363,11 +516,16 @@ Docs only, in [Run a checkout beside a release](https://fxbot.sh/docs/how-to/che
 - **`setup.sh`:** the checks take milliseconds. The pull it shows is the one the service ran before.
 - **Each start:** one `ufw status`, when ufw is installed and the engine is podman.
 - **A machine whose fxbot runs on Docker,** once the computer is added: about 45 MB of podman packages on disk (Ubuntu 24.04's podman is 42.6 MB installed), and nothing running between calls, where rootless Docker held 183 MB.
+- **On Debian 12 and Ubuntu 22.04,** where the computer runs on rootless Docker: its daemon's 183 MB, all the time, once the computer is added.
 
 ### Not in this phase
 
 - **fxbot itself rootless,** with no root engine. Its units, folders, port, and updates assume root.
-- **Other distros:** dnf, pacman, and SELinux's labels on the bind mounts.
+- **Systems that install as a whole image:** Fedora Silverblue and CoreOS, and openSUSE MicroOS. `setup.sh` stops on them.
+- **Alpine,** which has no systemd, and **NixOS,** which has none of the four package managers and is set up by its own configuration.
+- **RHEL 8 and its rebuilds,** whose cgroups v1 the computer refuses. fxbot itself isn't checked there.
+- **The computer on Amazon Linux 2023,** which has no podman and no Docker that runs rootless. fxbot itself installs once `dnf install docker` has run.
+- **SLES,** whose packages weren't put to zypper here, and **Gentoo, Void, and Slackware,** with other package managers.
 - **fxbot on macOS itself,** without a VM: launchd units in place of systemd's, another `fxbot` command, and no computer, which needs a Linux kernel. Every engine on a Mac runs a Linux VM anyway.
 - **`setup.sh` setting up Lima** on a Mac by itself ([open question 8](#5-open-questions)).
 - **Windows.** WSL 2's Ubuntu with systemd may run `setup.sh` as it is: unchecked. The system check names it.
@@ -380,32 +538,35 @@ Docs only, in [Run a checkout beside a release](https://fxbot.sh/docs/how-to/che
 
 | Part | Change | Lines |
 | --- | --- | --- |
-| `plugins/computer/host/setup.sh` | podman by default, `slirp4netns`, the version message, `/etc/fxbot/packages` | about 10 |
-| `plugins/computer/README.md`, `plugin.json` | rootless podman, and 0.3.2 | about 5 |
-| `setup.sh` | the checks, the system's with the Mac's commands, two inputs, the engine, the pull, the old database, the packages, the end, `main` | about 80, and about 10 removed |
-| `deploy/fxbot` | `backup`, `uninstall`, ufw's rule, `status`, `logs`, the usage | about 95 |
-| `deploy/compose.yaml`, `deploy/health` | `FXBOT_PORT` inside the app's container too | about 3 |
+| `plugins/computer/host/setup.sh` | the engine's order, the packages on four package managers, the cgroups and user namespace checks, the messages, `/etc/fxbot/packages` | about 40, and about 10 removed |
+| `plugins/computer/README.md`, `plugin.json` | the engine on each distro, and 0.3.2 | about 8 |
+| `setup.sh` | the checks, the system's with the Mac's commands, two inputs, the engine, Docker's repository, the four package managers, SELinux's labels, the pull, the old database, the packages, the end, `main` | about 140, and about 15 removed |
+| `deploy/fxbot` | `backup`, `uninstall`, ufw's and firewalld's rules, `status`, `logs`, the usage | about 100 |
+| `deploy/compose.yaml`, `deploy/health` | `FXBOT_PORT` inside the app's container too; `:z` on the three folders, and the key as a bind in place of `secrets:` | about 9 |
 | Website, `README.md`, `CHANGELOG.md`, `agent-setup.txt` | three new pages, the Mac in `agent-setup.txt` and on the home page, and the others above | about 300 |
 
-Size: about 190 lines of shell, and about 300 of docs.
+Size: about 285 lines of shell, and about 350 of docs.
 
 ## 4. Checklist
 
-Checks run on machines made as the installer checks of 2026-11-05 made them: `podman run -d --privileged --systemd=always` from a distro's image with systemd, with volumes on `/var/lib/containers`, `/var/lib/docker`, and `/var/lib/containerd`, at most three at a time, each removed when done, clear of the real install on 8787. An image built from this branch, and the branch's files, come from a mirror on the host's network, through `FXBOT_IMAGE`, `FXBOT_FILES`, and `FXBOT_RELEASES_URL`. Where rootless podman won't run nested in such a machine, a VM stands in, with the owner's go-ahead. New users, units, nftables tables, and packages on this machine itself need the owner's go-ahead. An install that passes proves little: each runs the lifecycle after (restart, `update`, `restore`, `rotate-key`, `down`, `up`).
+Checks run on machines made as the installer checks of 2026-11-05 made them: `podman run -d --privileged --systemd=always` from a distro's image with systemd added (Debian 12 and 13, Ubuntu 22.04 and 24.04, Fedora 45, Alma 9 and 10, Tumbleweed, Leap 16, and Arch), with volumes on `/var/lib/containers`, `/var/lib/docker`, and `/var/lib/containerd`, at most three at a time, each removed when done, clear of the real install on 8787. An image built from this branch, and the branch's files, come from a mirror on the host's network, through `FXBOT_IMAGE`, `FXBOT_FILES`, and `FXBOT_RELEASES_URL`. Where rootless podman won't run nested in such a machine, a VM stands in, with the owner's go-ahead. New users, units, nftables tables, and packages on this machine itself need the owner's go-ahead. An install that passes proves little: each runs the lifecycle after (restart, `update`, `restore`, `rotate-key`, `down`, `up`).
 
 Print each check's setup, and match exact fields.
 
 **The bound:**
-- **Size:** at most 220 lines of shell.
+- **Size:** at most 310 lines of shell.
 - **Out of scope:** [Not in this phase](#not-in-this-phase).
-- **If it must be cut,** the end's address lines go first, then ufw's rule, then the old database. The computer's engine, the checks, `backup`, `uninstall`, and their docs stay.
+- **If it must be cut,** the end's address lines go first, then ufw's rule, then the old database, then zypper, leaving openSUSE for later. The computer's engine, the checks, apt, dnf, and pacman, `backup`, `uninstall`, and their docs stay.
 
 **M1. The computer on every engine** (a fix: it can be built and released first)
 - [ ] Before the change, on Ubuntu 24.04 with `docker.io`: the computer's setup stops with "dockerd-rootless.sh isn't installed". On Ubuntu 24.04 with podman from `setup.sh`: a computer's first start, as it is today, and what it says. Record both in `computer.md`.
 - [ ] After: on Ubuntu 24.04 with `docker.io`, with `docker-ce`, and with podman, and on Debian 13 with `docker.io` and with podman, adding the computer sets up rootless podman for `fxbot-computer`. A bot's computer starts, runs a command, reaches the internet, and is refused this machine and `10.0.0.0/8`.
 - [ ] Docker's daemon keeps running beside it, and fxbot's own containers still answer.
 - [ ] A user already set up on rootless Docker keeps it on a second run, and its computers still list.
-- [ ] Debian 12 and Ubuntu 22.04 stop with the message that names podman's version and the distros that have one new enough.
+- [ ] On Fedora 45, Alma 9 and 10, Tumbleweed, Leap 16, and Arch, adding the computer sets up rootless podman, with the packages named under [Package managers](#package-managers), and a bot's computer starts, reaches the internet, and is refused this machine. On Arch with Docker running, podman beside it.
+- [ ] On Debian 12 and Ubuntu 22.04 with `docker-ce`, it sets up rootless Docker from `docker-ce-rootless-extras`, and a bot's computer does the same. On Debian 12 with `docker.io`, rootless `docker.io` from `contrib/`: *likely*, on Docker 20.10, and checked here before the docs say so.
+- [ ] Debian 12 on podman 4.3 stops with `#podman`'s message, Ubuntu 22.04 on `docker.io` with `#docker-io`'s, and both change nothing. Amazon Linux 2023 stops too.
+- [ ] The cgroups v2 and user namespace checks are read in the diff, with a stubbed `stat` and `/proc/sys` values run through each.
 - [ ] `--remove` takes it all away, and the packages stay.
 - [ ] The computer's docs and README, 0.3.2, `CHANGELOG.md`, and `computer.md`'s **What the build changed** say so.
 
@@ -413,14 +574,20 @@ Print each check's setup, and match exact fields.
 - [ ] Each stop comes before apt changes anything, checked with `dpkg -l` before and after: port 8787 held by another program, a `docker` under `/snap/` (a stub file stands in), and no systemd (a machine run without `--systemd`). The CPU and disk checks are read in the diff, with a stubbed `uname` and `df` run through each.
 - [ ] Memory under 1 GB warns and carries on.
 - [ ] `FXBOT_PORT=8790` installs on 8790: `.env` has it, the app listens on it inside its container, the health check and the end use it, and `fxbot update` keeps it. An MCP server's OAuth sign-in from `http://127.0.0.1:8790`, against a mock authorization server, comes back to 8790 and finishes.
-- [ ] With Docker running and podman installed, it picks docker. With `FXBOT_ENGINE=podman` on the same machine, podman.
+- [ ] With Docker running and podman installed, it picks docker. With `FXBOT_ENGINE=podman` on the same machine, podman. On Fedora with `podman-docker` and no Docker, podman.
+- [ ] A fresh Debian 12 and a fresh Ubuntu 22.04 get `docker-ce` from Docker's repository, and neither gets `docker.io`. With the key file changed on the mirror, it stops before apt runs.
+- [ ] A fresh Fedora 45, Alma 9 and 10, Tumbleweed, Leap 16, and Arch get podman from their package manager. On Alma, Compose is the download; on the rest, the package.
+- [ ] On Arch with its package lists emptied (`/var/lib/pacman/sync/`), it stops with `#pacman`'s line, and `pacman -Q` is the same before and after.
+- [ ] With `/run/ostree-booted` there, it stops before anything changes.
 - [ ] The pull shows its progress in a terminal.
+- [ ] On Fedora 45 with firewalld running in the machine: fxbot answers, `firewall-cmd --reload` runs, and fxbot still reaches its database, with `netavark-firewalld-reload` enabled. Before the change, the same reload's `EAI_AGAIN db` is recorded.
+- [ ] The compose file's `:z` and the key's bind: the lifecycle passes on Debian 13 and Ubuntu 24.04, where SELinux is off, and on both engines. On a Fedora 45 VM with SELinux enforcing (this machine has `/dev/kvm`; qemu is a new package, so with the owner's go-ahead), an install answers, a restore and an update pass, the computer's podman runs with its storage labelled, and `ausearch -m avc` shows nothing of fxbot's. Without the VM, the human's Fedora check stands in.
 - [ ] With ufw active and denying incoming, an install on podman answers, and `ufw status` shows the rule marked `fxbot`. After `fxbot down` and `up`, it still answers.
 - [ ] With `/opt/fxbot` removed by hand, `setup.sh` comes back on the same bots and chats, and a provider's key still opens.
-- [ ] `/etc/fxbot/packages` lists exactly what apt installed, on Debian 13 and on Ubuntu 22.04.
+- [ ] `/etc/fxbot/packages` names the package manager and lists exactly what it installed, on Debian 13, Ubuntu 22.04 (with Docker's repository's two files), Fedora 45, Tumbleweed, and Arch.
 - [ ] An install that apt would answer by removing a package stops before it, and changes nothing. A held package that conflicts stands in for one.
 - [ ] The script cut off halfway, piped to bash, does nothing.
-- [ ] Run again, it leaves a working install alone. The lifecycle passes on Debian 13, Ubuntu 24.04, Ubuntu 22.04, and Debian 12.
+- [ ] Run again, it leaves a working install alone, and installs no package twice. The lifecycle passes on Debian 13, Ubuntu 24.04, Ubuntu 22.04, Debian 12, Fedora 45, Alma 9, Tumbleweed, and Arch.
 
 **M3. The `fxbot` command**
 - [ ] `fxbot backup` writes a folder with `database.dump` and `data.tar.gz`, and the app answers again after. On a fresh machine, `setup.sh`, the key, and `fxbot restore` of that folder bring back the same bots, chats, and library, and a provider's key opens.
@@ -452,16 +619,18 @@ Print each check's setup, and match exact fields.
 
 **The human runs these:**
 - **A fresh VPS on Ubuntu 24.04 with `docker.io`:** install, **Essentials** with the computer, a bot's computer, then `fxbot uninstall`.
+- **A fresh VPS on Ubuntu 22.04,** the same, on the `docker-ce` it gets.
+- **An Arch machine, and a Fedora machine with SELinux enforcing and firewalld on:** install, **Essentials** with the computer, a bot's computer, an update from Settings, and a reboot.
 - **The owner's machine with ufw:** the update that brings ufw's rule, with nothing done by hand.
-- **On a Mac, Apple silicon or Intel:** `curl … | sudo bash` gives the Mac's message. Then the page's steps: Lima, Debian 13, `setup.sh` in the VM, `http://127.0.0.1:8787` in the Mac's browser (Lima's forwarding is the part this plan can't check here), a bot that answers, **Essentials** with a computer that can't reach the Mac, a restart of the Mac with `start-at-login`, and `limactl delete`. And once, an agent on the Mac following `agent-setup.txt`.
+- **On a Mac, Apple silicon or Intel:** `curl … | sudo bash` gives the Mac's message. Then the page's steps: Lima, Debian 13, `setup.sh` in the VM, `http://127.0.0.1:8787` in the Mac's browser through the static rule, and, once, without it, to see whether Lima's own forwarding finds podman's port (the part this plan can't check here), a bot that answers, **Essentials** with a computer that can't reach the Mac, a restart of the Mac with `start-at-login`, and `limactl delete`. And once, an agent on the Mac following `agent-setup.txt`.
 - **The words:** do the stops and the uninstall's question tell a newcomer what to do?
 
 ## 5. Open questions
 
 Each has a default the build follows unless the owner changes it.
 
-1. **The computer's engine.** *Default:* rootless podman, beside whichever engine fxbot runs on. On 2026-11-03 the owner made it the machine's own engine, podman or docker; that is what fails on Ubuntu 24.04's and 22.04's `docker.io`. The other way keeps it: carry moby's `dockerd-rootless.sh` in the plugin, for those two, and check it against Ubuntu's `rootlesskit` 1.1.1, which is older than any the computer has run on.
-2. **The computer's Docker branch.** *Default:* it stays, for a user already set up on it. Removing it saves about 45 lines, and a user on it would move to podman, with their computers made again and their homes lost.
+1. **The computer's engine.** *Default:* rootless podman where the distro has 4.9 or newer, beside whichever engine fxbot runs on, and the installed Docker, run rootless, where podman is older (Debian 12 and Ubuntu 22.04). On 2026-11-03 the owner made it the machine's own engine, podman or docker; that is what fails on Ubuntu 24.04's and 22.04's `docker.io`. The other way keeps it: the machine's own Docker first, rootless, wherever its packages can (`docker-ce`, Debian's `docker.io`, Fedora's `moby-engine`, openSUSE's `docker`), and podman only where they can't (Ubuntu's `docker.io`, Arch's, Amazon Linux's). Rootless Docker's daemon holds 183 MB all the time.
+2. **The computer's Docker branch.** *Default:* it stays. It runs the computer on Debian 12 and Ubuntu 22.04, where podman is too old, and for a user already set up on it. Removing it saves about 45 lines, leaves those two distros without a computer, and moves a user on it to podman, with their computers made again and their homes lost.
 3. **No systemd.** *Default:* `setup.sh` stops, since such an install never starts at boot or updates from Settings. The other way keeps today's install, and says what doesn't work.
 4. **ufw's rule.** *Default:* `fxbot up` adds it on podman, marked `fxbot`, and uninstall takes it away. Offered for 0.7.0 on 2026-11-07, not yet agreed. The other way: a check that prints the command.
 5. **What uninstall keeps.** *Default:* a backup, the key, and the user, as apt's `remove` keeps settings, with `--purge` for everything. The other way removes everything unless told `--keep`.
@@ -469,3 +638,8 @@ Each has a default the build follows unless the owner changes it.
 7. **A running Docker wins.** *Default:* on a machine with a running Docker and an installed podman, a new install uses docker. Installs already made keep their engine.
 8. **A Mac in one command.** *Default:* `setup.sh` on macOS stops and prints Lima's three commands, the page walks through them, and an agent on the Mac runs them. The other way: `setup.sh` on a Mac installs Lima as the user who ran `sudo` (Homebrew refuses root), makes the VM, and runs itself inside, in about 25 lines, which only a Mac can check.
 9. **Which VM on a Mac.** *Default:* Lima with Debian 13, free for any use, a whole VM, and the distro fxbot and its computer were checked on. OrbStack is quicker and lighter, and the page names it for owners who have it, but it's paid for work, and its machines share one kernel, where the computer is unchecked.
+10. **`docker-ce` on Debian 12 and Ubuntu 22.04.** *Default:* a fresh install there, with no engine, gets Docker's own `docker-ce` from Docker's repository, so the computer runs too. The other way keeps today's: podman 4.3 on Debian 12, `docker.io` on Ubuntu 22.04, and the computer stopping on both with the fix.
+11. **pacman's package lists.** *Default:* `setup.sh` never refreshes them, and an old one stops with `sudo pacman -Syu` to run first. The other way runs `pacman -Syu --needed` itself, as Coolify does for Docker, which upgrades the owner's whole system.
+12. **Which distros the docs name.** *Default:* those whose install and lifecycle pass in the checklist, by name, with "and the distros built on them". The rest of [Other distros](#other-distros) stay out of the docs until checked.
+13. **SELinux.** *Default:* `:z` in the compose file, and the key as a bind that can take it. The other way: `setup.sh` labels `/var/lib/fxbot` and the key with `semanage fcontext` and `restorecon`, falling back to `chcon`, and the compose file keeps `secrets:`.
+14. **firewalld.** *Default:* `fxbot up` turns on `netavark-firewalld-reload.service` on podman with firewalld running, and uninstall leaves it on. The other way: a check that prints the command, as open question 4's other way does for ufw.
