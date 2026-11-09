@@ -33,6 +33,7 @@ export function usable(e: CatalogEntry): boolean {
   if (e.fields !== undefined && !(Array.isArray(e.fields) && e.fields.every(field))) return false;
   if (e.steps !== undefined && !(Array.isArray(e.steps) && e.steps.every((step) => isText(step, 300)))) return false;
   if (e.headers !== undefined && !(e.headers && typeof e.headers === "object" && Object.entries(e.headers).every(([k, v]) => /^[A-Za-z0-9-]{1,60}$/.test(k) && isText(v, 300)))) return false;
+  if (e.optionalCheck !== undefined && typeof e.optionalCheck !== "boolean") return false;
   if (e.badKey !== undefined && !(Array.isArray(e.badKey) && e.badKey.every((n) => Number.isInteger(n) && n >= 400 && n < 500))) return false;
   if (e.hide !== undefined && !(Array.isArray(e.hide) && e.hide.every((h) => isText(h, 100)))) return false;
   if (e.models !== undefined && !["own", "catalog", "typed"].includes(e.models)) return false;

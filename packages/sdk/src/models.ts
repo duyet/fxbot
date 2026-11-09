@@ -296,6 +296,8 @@ export function createModels(sql: Sql, fetch: Fetch, catalog: ProviderCatalog) {
       } catch (error) {
         const upstream = (error as { upstream?: number }).upstream;
         if (upstream === 404) return;
+        // A check that isn't served where this provider is, as in a region without Bedrock's mantle.
+        if (!upstream && entry.optionalCheck && entry.keyCheck) return;
         if (upstream && (entry.badKey ?? [401, 403]).includes(upstream)) {
           // What each refusal most likely means.
           const why = upstream === 401 ? "it's wrong, or it was deleted" : upstream === 403 ? "it may lack a permission, or the account may need credit" : "it isn't a key it can read";

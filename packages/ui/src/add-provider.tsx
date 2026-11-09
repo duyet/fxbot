@@ -91,7 +91,7 @@ export function AddProvider({ first, words, done = "Done", onDefault, onDone }: 
     <div className="grid gap-5">
       <label className="relative">
         <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input className="pl-8" aria-label="Search providers" placeholder={`Search ${catalog.providers.length + catalog.more.length} providers`} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <Input className="pl-8" aria-label="Search providers" placeholder="Search providers" value={query} onChange={(e) => setQuery(e.target.value)} />
       </label>
       {q ? (
         <Group title={results.length ? `${results.length} found` : "No provider by that name"} about={results.length ? undefined : "Custom takes any server that speaks OpenAI's Chat Completions."}>
@@ -495,7 +495,9 @@ export function ModelStep({ provider, entry, first, done, onDefault, onDone }: {
   const [makeDefault, setMakeDefault] = useState(first);
   const [error, setError] = useState("");
   useEffect(() => {
-    if (!model && entry?.recommended && models?.some((m) => m.id === entry.recommended)) setModel(entry.recommended);
+    // A host may name it with a prefix, as Gemini's `models/`.
+    const recommended = entry?.recommended && models?.find((m) => m.id === entry.recommended || m.id.split("/").at(-1) === entry.recommended);
+    if (!model && recommended) setModel(recommended.id);
   }, [models]);
   const picked: Model | undefined = models?.find((m) => m.id === model);
   async function finish() {

@@ -41,7 +41,7 @@
       "group": "key",
       "order": 10,
       "connect": "key",
-      "keyPage": "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%2Fapi-keys",
+      "keyPage": "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys",
       "steps": ["Pick the team to bill, then choose Create key.", "Copy the key. Vercel shows it only once."],
       "docs": "/docs/providers/vercel/"
     },
@@ -68,7 +68,7 @@
       "connect": "key",
       "baseUrl": "https://api.anthropic.com/v1",
       "keyPage": "https://platform.claude.com/settings/keys",
-      "steps": ["Choose Create Key, and pick a workspace for it.", "Add credit under Billing first."],
+      "steps": ["Choose Create key, and pick a workspace for it.", "Add credit under Billing first."],
       "note": "Anthropic says its OpenAI-compatible API is \"not considered a long-term or production-ready solution\". It has no prompt caching, and returns no thinking.",
       "headers": { "x-api-key": "{apiKey}", "anthropic-version": "2023-06-01" },
       "modelsDev": "anthropic",
@@ -175,7 +175,7 @@
           "label": "Platform",
           "options": [
             { "value": "api.moonshot.ai", "label": "Global (platform.kimi.ai)" },
-            { "value": "api.moonshot.cn", "label": "China (platform.moonshot.cn)" }
+            { "value": "api.moonshot.cn", "label": "China (platform.kimi.com)" }
           ],
           "default": "api.moonshot.ai",
           "hint": "A key works only on the platform it was made on."
@@ -328,7 +328,7 @@
     {
       "id": "nous",
       "name": "Nous Portal",
-      "about": "Hermes and other models, from Nous Research",
+      "about": "Nous Research's gateway to models from many labs",
       "group": "key",
       "order": 190,
       "connect": "key",
@@ -361,9 +361,8 @@
       "order": 210,
       "connect": "key",
       "baseUrl": "https://opencode.ai/inference/openai/v1",
-      "keyPage": "https://opencode.ai/auth",
+      "keyPage": "https://opencode.ai/console",
       "steps": ["Sign in, and open API Keys.", "Choose Create API Key."],
-      "start": "Some models are free",
       "keyCheck": "https://opencode.ai/inference/v1/models",
       "modelsDev": "opencode",
       "models": "catalog",
@@ -377,7 +376,7 @@
       "order": 220,
       "connect": "key",
       "baseUrl": "https://opencode.ai/inference/go/openai/v1",
-      "keyPage": "https://opencode.ai/auth",
+      "keyPage": "https://opencode.ai/console",
       "steps": ["Sign in, and subscribe to Go.", "Open API Keys, and choose Create API Key."],
       "keyCheck": "https://opencode.ai/inference/go/v1/models",
       "modelsDev": "opencode-go",
@@ -387,7 +386,7 @@
     {
       "id": "vertex",
       "name": "Vertex AI",
-      "about": "Gemini and partner models in your Google Cloud project",
+      "about": "Gemini and partner models in your Google Cloud project, on what Google now calls Gemini Enterprise Agent Platform",
       "group": "cloud",
       "order": 10,
       "connect": "service-account",
@@ -395,8 +394,8 @@
       "fields": [{ "name": "location", "label": "Location", "default": "global", "hint": "global, or a region such as us-central1." }],
       "keyPage": "https://console.cloud.google.com/iam-admin/serviceaccounts",
       "steps": [
-        "Turn on the Vertex AI API in your project.",
-        "Make a service account with the Vertex AI User role.",
+        "Turn on the Agent Platform API in your project. It was the Vertex AI API.",
+        "Make a service account with the Agent Platform User role. It was Vertex AI User.",
         "Open it, then Keys › Add key › Create new key › JSON. Choose the file it downloads here."
       ],
       "modelsDev": "google-vertex",
@@ -416,8 +415,9 @@
       "fields": [{ "name": "region", "label": "Region", "default": "us-east-1", "hint": "Where your models are turned on, such as us-west-2." }],
       "keyPage": "https://console.aws.amazon.com/bedrock/home#/api-keys",
       "steps": ["Pick the region at the top of the console.", "Choose Generate long-term API keys, and pick how long it lasts."],
-      "note": "AWS calls long-term keys \"for exploration only\". When yours expires, make another and use Replace key. Claude doesn't serve this API on Bedrock, so it isn't listed.",
+      "note": "AWS recommends long-term keys only for exploring Bedrock. When yours expires, make another and use Replace key. Claude doesn't serve this API on Bedrock, so it isn't listed.",
       "keyCheck": "https://bedrock-mantle.{region}.api.aws/v1/models",
+      "optionalCheck": true,
       "modelsDev": "amazon-bedrock",
       "models": "catalog",
       "hide": ["anthropic.*", "*.anthropic.*"],
@@ -485,8 +485,8 @@
       "group": "local",
       "order": 30,
       "connect": "url",
-      "baseUrl": "http://localhost:8080/v1",
-      "hint": "Start it with --jinja, so the model can call tools. Set Context window to its --ctx-size.",
+      "baseUrl": "http://localhost:9931/v1",
+      "hint": "Its usual port is 9931. Older builds, and its Docker images, use 8080. Set Context window to its --ctx-size.",
       "docs": "/docs/providers/llamacpp/"
     },
     {
@@ -508,7 +508,7 @@
       "order": 50,
       "connect": "url",
       "baseUrl": "http://localhost:1337/v1",
-      "hint": "Start its Local API Server in Jan's settings, with an API key, and paste that key here.",
+      "hint": "Start its Local API Server in Jan's settings. If you set an API key there, paste it here.",
       "docs": "/docs/providers/jan/"
     },
     {

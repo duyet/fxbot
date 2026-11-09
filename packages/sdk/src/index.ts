@@ -471,7 +471,8 @@ export async function createFxbot(options: FxbotOptions) {
       if (end.stopReason === "error" || end.stopReason === "refused") failed = ("error" in end && end.error?.message) || reply.trim() || `The turn ended as ${end.stopReason}.`;
       // A provider that refused the key, as libfx ends a turn on a 401 with no words of its own, says which, and what to do.
       const status = end.stopReason === "refused" ? providers.refusing(provider) : undefined;
-      if (turn.messageId && (status === 401 || status === 403 || keyRefused.test(failed ?? ""))) refusedKey.set(turn.messageId, (failed = await keyWords(provider)));
+      const said = /\b40[13]\b/.exec(keyRefused.test(failed ?? "") ? failed! : "")?.[0];
+      if (turn.messageId && (status === 401 || status === 403 || said)) refusedKey.set(turn.messageId, (failed = await keyWords(provider, status ?? Number(said))));
     } catch (error) {
       if (mine && turn.messageId) packages.observe("turn.end", { bot: id, session: sessionId, messageId: turn.messageId, ...heard(sent), reply, error: (error as Error).message });
       return;
@@ -501,15 +502,21 @@ export async function createFxbot(options: FxbotOptions) {
   // its end is kept, so a line that ends a turn as refused asks the bot's provider what it last refused with.
   const refusedKey = new Map<string, string>();
   async function refusedNow(line: StreamLine, bot: string) {
-    const said = keyRefused.test(line.error?.message ?? "");
+    const message = line.error?.message ?? "";
+    const said = keyRefused.test(message) ? Number(/\b40[13]\b/.exec(message)?.[0]) : undefined;
     if (line.stopReason !== "refused" && !said) return undefined;
     const provider = (await store.profiles.get(bot))?.provider ?? "";
-    const status = providers.refusing(provider);
-    return said || status === 401 || status === 403 ? keyWords(provider) : undefined;
+    const status = said ?? providers.refusing(provider);
+    return status === 401 || status === 403 ? keyWords(provider, status) : undefined;
   }
-  async function keyWords(provider: string) {
+  // A 401 is the key; a 403 can be the key's permissions, or an account out of credit or quota.
+  async function keyWords(provider: string, status: number) {
     const named = provider ? await providers.describe(provider).catch(() => null) : null;
-    return `${named?.label ?? "The provider"} rejected ${named && named.name !== named.label ? `${named.name}'s` : "this provider's"} key. Replace it in Settings › Providers.`;
+    const label = named?.label ?? "The provider";
+    const whose = named && named.name !== named.label ? `${named.name}'s` : "this provider's";
+    return status === 403
+      ? `${label} refused ${whose} key (HTTP 403): it may lack a permission, or the account may need credit or be over its quota. Check the account, or replace the key in Settings › Providers.`
+      : `${label} rejected ${whose} key. Replace it in Settings › Providers.`;
   }
   const byPlugin = new Set((await store.sent.byPlugins()).map((row) => `${row.profileId}:${row.messageId}`));
   function withSent(id: string) {

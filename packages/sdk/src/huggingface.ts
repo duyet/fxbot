@@ -12,7 +12,7 @@ const credentials = (body: any, old?: HfCredentials): HfCredentials => ({
 });
 
 export const start = (clientId: string, fetch: Fetch) =>
-  startDevice(fetch, "https://huggingface.co/oauth/device", form({ client_id: clientId, scope: "openid profile inference-api" }), "Hugging Face", "huggingface.co");
+  startDevice(fetch, "https://huggingface.co/oauth/device", form({ client_id: clientId, scope: "inference-api" }), "Hugging Face", "huggingface.co");
 
 export async function complete(device: Device, clientId: string, fetch: Fetch, signal?: AbortSignal): Promise<HfCredentials> {
   const grant = (deviceCode: string) => form({ grant_type: "urn:ietf:params:oauth:grant-type:device_code", device_code: deviceCode, client_id: clientId });

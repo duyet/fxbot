@@ -158,6 +158,8 @@ export type CatalogEntry = {
   hint?: string;
   keyCheck?: string;
   badKey?: number[];
+  /** Its `keyCheck` isn't served everywhere, as Bedrock's mantle isn't in every region: where it can't be reached, the key is kept unchecked. */
+  optionalCheck?: boolean;
   unchecked?: boolean;
   modelsDev?: string | string[];
   models?: "own" | "catalog" | "typed";
