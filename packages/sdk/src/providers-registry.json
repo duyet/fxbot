@@ -373,7 +373,7 @@
       "name": "OpenCode Go",
       "about": "OpenCode's subscription for open models",
       "group": "key",
-      "order": 220,
+      "order": 45,
       "connect": "key",
       "baseUrl": "https://opencode.ai/inference/go/openai/v1",
       "keyPage": "https://opencode.ai/console",
