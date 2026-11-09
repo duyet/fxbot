@@ -3,7 +3,7 @@
 The owner's fxbot, from their phone or any computer, with nothing exposed and no Tailscale:
 - **web.fxbot.sh is a PWA** that opens the owner's own fxbot, with its whole UI and plugins, over a WebRTC data channel straight to their fxbot. It works wherever the two can reach each other: home, work, or a phone's network.
 - **Peer to peer and end-to-end encrypted.** fxbot.sh hosts only the handshake: a relay that passes sealed messages between the two, reads none of them, and stores nothing. The page's own code comes from the site. Everything the owner sees, the UI included, comes from their fxbot through the channel.
-- **Pairing starts where fxbot already trusts the owner.** That's Settings › Devices on the machine, the same page through an SSH tunnel on a server, or a device that's already paired. It shows a QR code and a short code. The new device enters the code, both screens show the same six digits, and the owner approves.
+- **Pairing starts where fxbot already trusts the owner.** That's Settings › Web pairing on the machine, the same page through an SSH tunnel on a server, or a device that's already paired. It shows a QR code and a short code. The new device enters the code, both screens show the same six digits, and the owner approves.
 - **A pairing lasts until the owner removes it.** A device is a key its browser keeps, with no tokens and no expiry. It reconnects by itself after a lock screen, a network change, or a restart on either side. A paired device can pair another one from anywhere, so a lost pairing doesn't wait for home.
 - **On fxbot's side, it's a plugin,** `web-pairing`, with all of the peer-to-peer code. Once a device is paired, it keeps one outbound connection to the relay, lets in only the devices it paired, and passes their requests to its own API. Until then, it runs nothing.
 - **STUN only, by default.** Cloudflare's STUN finds each end's public address, and the two connect directly. fxbot.sh relays no traffic. The owner can:
@@ -15,7 +15,7 @@ The owner's fxbot, from their phone or any computer, with nothing exposed and no
   - **The docs cover each way in detail:** Tailscale, WireGuard, a TURN or STUN server of the owner's own, and a forwarded or mapped port.
 - **In the Essentials pack, STUN only.** A new install has it. It opens no connection until a device is paired.
 
-Status: planned on 2026-11-08, for 0.8.0, not built. The owner's decisions of 2026-11-09 are under What the owner asked. Researched on 2026-11-08:
+Status: built on 2026-11-09, for 0.8.0, and checked on this machine against a disposable fxbot and the relay under `wrangler dev`, in Chromium, Firefox, and WebKit (section 4). Nothing was run on a phone, against the deployed Worker, or on a real NAT, carrier, or router: those are the human checks. Where the build differs from the plan, section 3 says so under **Built**. The owner's decisions of 2026-11-09 are under What the owner asked. Researched on 2026-11-08:
 - the research directive's references
 - products that reach a self-hosted agent or server from a phone: Happy, OpenClaw, Claude Code Remote Control, Codex Remote, go2rtc, PairDrop, and others
 - the pairing designs of Magic Wormhole, Signal, WhatsApp, Matter, HomeKit, KDE Connect, Syncthing, and Chrome Remote Desktop
@@ -747,74 +747,114 @@ All of the peer-to-peer code is in the plugin and the web app. Core gains only t
 
 **Size:**
 
-| Part | Lines |
-| --- | --- |
-| Protocol: Noise, CPace, and the bridge's messages | about 200 |
-| The relay | about 120 |
-| The plugin's server: keys, relay, pairing, devices, the bridge | about 450 |
-| Reachability and port mapping | about 150 |
-| The plugin's Devices tab | about 250 |
-| The shell, with the notice | about 500 |
-| The frame | about 200 |
-| SDK hooks | about 30 |
-| The vectors check | about 60 |
-| Docs | about 700 |
+| Part | Lines | Built |
+| --- | --- | --- |
+| Protocol: Noise, CPace, and the bridge's messages | about 200 | 510, with the WebSocket framing, the error texts, the passkey's helpers, and the docs links both sides share |
+| The relay | about 120 | 236, with the shell's and frames' files and headers |
+| The plugin's server: keys, relay, pairing, devices, the bridge | about 450 | 825: `server.ts` and `bridge.ts` |
+| Reachability and port mapping | about 150 | 254, with the ICE list and TURN credentials |
+| The plugin's Devices tab | about 250 | 310, and 12 of CSS |
+| The shell, with the notice | about 500 | 854, with passkeys and its worker, and 83 of CSS |
+| The frame | about 200 | 319 |
+| SDK hooks | about 30 | 33 |
+| The vectors check | about 60 | 65 |
+| Passkeys (M7) | | 132, in the shell and the plugin |
+| Docs | about 700 | 635 in 10 new pages, and Reach it |
+
+### Built
+
+Where the build went its own way, and why:
+
+- **werift 0.25.2,** not 0.26. 0.26.0 came out on 2026-11-01, under the two weeks a dependency waits. M1 ran on 0.25.2.
+- **fxbot makes the WebRTC offer,** and opens the control channel; the device answers, and opens a channel of its own for each request. With the device offering, werift is DTLS's client, and Firefox never connected ([#438](https://github.com/shinyoshiaki/werift-webrtc/issues/438)). With fxbot offering, the browser is the client, and Firefox, Chromium, and WebKit all connected (M1). So no fork of werift was needed.
+- **A listener proves its keys in the URL,** signing its address and the time with Ed25519, which the relay checks within two minutes before it accepts the socket, in place of a nonce round trip. A socket's role then lives in its tags from the start, which hibernation keeps.
+- **Envelopes:** after each handshake, every message is a sealed `t`. P3 and P4 are such messages, not kinds of their own. A passkey pairs with `r1` and `r2`. An `err` carries a name, and both sides keep the words for it in `wire.ts`.
+- **fxbot's offer comes whole,** with its candidates gathered, in 5 seconds at most; the device answers at once and sends its candidates as they come.
+- **A new connection, not `restartIce()`.** After a drop or a return to the front, the device runs the handshake again and makes a new connection, which covers a suspended page and a changed network alike.
+- **The channel check is on the control channel,** each side's first message, and fxbot serves no other channel until it passes, rather than on every channel.
+- **The tab is Settings › Web pairing,** since a plugin's tab takes its name. Its settings, the ICE list with its credentials among them, are sealed with `fx.secrets` beside the keys, not plugin settings. It polls; it has no socket.
+- **A WebSocket's messages go in pieces,** each up to 16 KiB with a first byte that says whether it's text and whether more follows, since werift takes 64 KiB at most and the computer's frames can be bigger. Each side starts with a head, so a refused socket says so.
+- **Sandboxed frames are written in as `srcdoc`.** Browsers don't send a sandboxed frame's page, one without `allow-same-origin`, through a service worker, so the pages plugin's HTML pages reached the Worker, which has none of fxbot's. The frame's worker now writes such a frame's page into the frame around it, with the page's own policy as a meta tag. A `srcdoc` page also takes the policy of the page around it, so that page's policy takes in the framed page's sources; its own text is the plugin's fixed shell. Found by M1's check of the pages plugin's shape.
+- **A device key where X25519 keys can't be stored.** WebKit's Linux build, which Playwright runs, refuses to store an X25519 `CryptoKey` in IndexedDB; ECDH and AES keys store. There, the shell keeps the key's bytes sealed under a non-extractable AES-GCM key. Real Safari wasn't checked, and takes the same path if it refuses.
+- **Pairing doesn't wait on `persist()`.** Firefox asks the person first, so the answer can come long after. The **Devices** screen shows it when it comes.
+- **Ports.** Each connection takes one or two UDP ports, so the ten in 8790–8799 fill with a few devices. A device's new connect closes its own attempts that never connected, an attempt that never connects ends at 20 seconds, and when every port is taken, a connection uses another and the log says so. IPv6 sockets open only where the machine has a global IPv6 address.
+- **werift falls back to Google's STUN** when given no STUN server. With none in the owner's list, it's given `127.0.0.1:9` instead, so it contacts no one it wasn't told to.
+- **A code survives the relay restarting** as a new code: the ticket claims another nameplate, and the screen shows it. Opening a pairing reconnects the listener at once rather than waiting out its backoff. Node's `WebSocket` fires only `error` when the relay refuses an upgrade, so the listener treats that as a close.
+- **A fresh install's devices say "isn't connected to the relay",** with "if it was installed again from nothing, it has new keys: pair again". A new install has a new address at the relay, so a device can't tell a new key from an fxbot that's off.
+- **The shell's CSP allows any `wss:` relay,** not fxbot.sh's alone, since an owner may run their own, and `ws:` only when the shell itself is plain http on the owner's machine.
+- **Removing the plugin unpairs everything:** removing a plugin drops its schema and its sealed values, keys among them. **Remote access** off pauses it instead.
+- **fxbot's name,** shown on devices, is the first part of its machine's hostname.
+- **Passkeys (M7).** A passkey's user id carries the fxbot's address and key, so a wiped device finds it: 49 bytes, within WebAuthn's 64. The relay isn't in it: the recovery screen takes one, fxbot.sh's by default. The challenge is a hash of the device's new key, the time, and a nonce, so one prompt pairs it, and fxbot checks the origin, the rpId, user presence and verification, the signature, the time within two minutes, and that the nonce is new. A refused passkey counts toward the lockout. A passkey keeps fxbot listening, so it works with no other device paired.
+- **The Worker's environments:** `wrangler.toml`'s top level is `npm run dev` on this machine, at `localhost:8771` with frames at `<frame>.localhost:8771`, since routes make `wrangler dev` rewrite every host; `[env.production]` has the routes, and `npm run deploy` uses it.
+- **Typechecks:** `packages/web-app` isn't a workspace, so wrangler stays out of fxbot's image, and has three typechecks of its own: the pages, the workers, and the Worker. The plugin's server is checked by its own `tsconfig.json`, since it needs its bundle's packages, and `plugins/tsconfig.json` leaves it out.
+- **A request through the bridge** takes fxbot's own limit for plugin routes, 12 MiB; the bridge's own is 256 MiB.
+- **Licenses:** `server-licenses.txt` and `page-licenses.txt` beside the plugin's bundles, and `licenses.txt` in the shell, each with the license of every package the bundle carries. `server.js` is 1 MB, under fxbot's 2 MiB for a plugin's file.
 
 ## 4. Checklist
 
 **M1. The risky parts first.** A spike, before the rest. Each answer goes into this doc.
-- [ ] A frame on `<frame>.fxbot.sh` inside web.fxbot.sh registers its service worker, and serves fxbot's UI, an image, a plugin's CSS, and the pages plugin's sandboxed frame through it. Check it on iOS Safari and in an iOS Home Screen app, Android Chrome and its installed app, and desktop Chrome, Firefox, and Safari.
-- [ ] werift 0.26, bundled, against Safari on iOS and macOS, Android Chrome, and Firefox, which werift's open issue says never connects ([#438](https://github.com/shinyoshiaki/werift-webrtc/issues/438)).
+- [x] A frame on `<frame>.fxbot.sh` inside web.fxbot.sh registers its service worker, and serves fxbot's UI, an image, a plugin's CSS, and the pages plugin's sandboxed frame through it. Check it on iOS Safari and in an iOS Home Screen app, Android Chrome and its installed app, and desktop Chrome, Firefox, and Safari. *Checked in headless Chromium, Firefox, and WebKit, at `localhost:8771` with frames at `<frame>.localhost:8771`: the UI with its bot, an image by address, the Web pairing tab's stylesheet, and a sandboxed frame in a frame with the pages plugin's headers, which needed `srcdoc` (see **Built**). The phones and their installed apps weren't run: they're human checks.*
+- [x] werift 0.26, bundled, against Safari on iOS and macOS, Android Chrome, and Firefox, which werift's open issue says never connects ([#438](https://github.com/shinyoshiaki/werift-webrtc/issues/438)).
   - Each gets a channel, a 32 MB file both ways, and a hundred channels at once.
   - If a browser can't connect, werift gets the fix, upstream or in a fork the plugin bundles, since it's plain TypeScript, and this doc says so. A native library would need core to carry it, which the owner ruled out.
-- [ ] An iPhone app sent to the background loses its channel, and returns to a working one within 3 s of coming back.
+
+  *werift 0.25.2. With the browser offering, Firefox never connected, as the issue says. With fxbot offering, all three did, with no fork: setup in 260 ms (Chromium), 145 ms (WebKit), and 119 ms (Firefox); 32 MB down and up at 33.7/47.9, 30.5/36.1, and 14.2/33.0 MB/s; a hundred channels in 15, 10, and 10 ms. Through the finished bridge, 32 MB down at 28–33 MB/s in each. iOS, macOS Safari, and Android weren't run.*
+- [ ] An iPhone app sent to the background loses its channel, and returns to a working one within 3 s of coming back. *Not run: no iPhone here. The shell reconnects on `visibilitychange`, `online`, and a network change, and after a drop.*
 
 **M2. Protocol and relay**
-- [ ] `packages/web-app/protocol/`: Noise IK and IKpsk2, CPace, and the bridge's messages. `check.mjs` runs the cacophony and CPace draft-21 vectors, and the plugin's README says to run it after any change.
-- [ ] The relay Worker, listen, call, and nameplates, under `wrangler dev`:
+- [x] `packages/web-app/protocol/`: Noise IK and IKpsk2, CPace, and the bridge's messages. `check.mjs` runs the cacophony and CPace draft-21 vectors, and the plugin's README says to run it after any change. *16 checks pass.*
+- [x] The relay Worker, listen, call, and nameplates, under `wrangler dev`:
   - a listener with the wrong key is refused
   - the limits hold
   - the Worker uses no storage API (checked in its code)
   - logs are off
 
+  *17 checks pass: a listener signing with another key, with an old time, or for another address is refused; a call with no listener hears `offline`; messages reach the listener by call and back; ping and pong; a message over 16 KB, a call's 65th message, and calls past 30 a minute are refused; a newer listener replaces the older; a nameplate is claimed, reached, answered, and refused to a second device and to a code nobody holds. `worker.ts` has no storage, alarm, attachment, or console call, and `wrangler.toml` turns Workers Logs off.*
+
 **M3. The plugin**
-- [ ] `fx.secrets` and `fx.localUrl`, with notes under `## Unreleased`.
-- [ ] Keys made once and sealed; `rid`; the listener, which reconnects after the relay is killed.
-- [ ] No relay connection until a pairing opens or a device is paired, and none after the last device is removed.
-- [ ] `web-pairing` in `essentials`: a new install's onboarding adds it, and with nothing paired it makes no connection and no timer.
-- [ ] Pairing by link and by code, against a check page that stands in for the shell:
+- [x] `fx.secrets` and `fx.localUrl`, with notes under `## Unreleased`.
+- [x] Keys made once and sealed; `rid`; the listener, which reconnects after the relay is killed. *The relay killed and started again: fxbot listened again 4 s after it was up. A code open meanwhile came back as a new code, which paired.*
+- [x] No relay connection until a pairing opens or a device is paired, and none after the last device is removed. *And none after the last passkey is removed.*
+- [ ] `web-pairing` in `essentials`: a new install's onboarding adds it, and with nothing paired it makes no connection and no timer. *In the list and in Essentials. A fresh install with nothing paired had no relay connection, and the code starts no timer until it wants one. Onboarding adding it wasn't run: it adds plugins from the repository's default branch, which has no `plugins/web-pairing` until this release is merged.*
+- [x] Pairing by link and by code, against a check page that stands in for the shell:
   - approval with the six digits
   - a wrong code burns it, and three lock pairing
   - a ticket dies after 10 minutes, and with a restart
-- [ ] Connecting: an unknown key, a removed one, and a replayed K1 are refused.
-- [ ] The bridge: JSON, the chat's stream, a 32 MB file, and the computer's desktop WebSocket, through the channel. The device routes are refused from a frame. Removing a device closes its connection at once.
-- [ ] A server with no browser, paired through an SSH tunnel to its 127.0.0.1:8787.
+
+  *Against the shell itself, in three browsers, and from Node as a device: the same six digits on both sides, by link and by code; a wrong code ends its ticket, and three lock pairing and refuse a new one; a ticket from before a restart is refused as expired; and one left open was open at 9 minutes 55 seconds and expired at 10 minutes 5, its code and link gone.*
+- [x] Connecting: an unknown key, a removed one, and a replayed K1 are refused. *And a K1 with an older counter.*
+- [x] The bridge: JSON, the chat's stream, a 32 MB file, and the computer's desktop WebSocket, through the channel. The device routes are refused from a frame. Removing a device closes its connection at once. *In three browsers: JSON, a chat's reply streamed into the UI from a mock model, 32 MB down, 11 MiB up (fxbot takes 12 MiB at most in a plugin route), and a WebSocket with text and a 100 KB binary message, through a check plugin's echo: the computer can't run in checks as root here. The device routes answered 403 in the frame, and removing the device closed its connection, which said why.*
+- [x] A server with no browser, paired through an SSH tunnel to its 127.0.0.1:8787. *Paired through the server's loopback, which is what the tunnel reaches; the tunnel itself wasn't run.*
 
 **M4. The web app**
-- [ ] The shell: pair, list, open, reconnect, Devices, Pair another device, `persist()`, and the private-window and iPhone notes.
-- [ ] The frame: the unchanged UI, plugins and all: a chat, the library, the computer's desktop, a page, and Settings.
-- [ ] Against a disposable fxbot on this machine, with `FXBOT_PORT` off 8787 and a local relay.
+- [x] The shell: pair, list, open, reconnect, Devices, Pair another device, `persist()`, and the private-window and iPhone notes. *Pair, list, open, a reload that keeps the pairing and opens it again, the Devices screen, and pairing a second device by a code from the first, approved there, which then showed the new device's name. The private-window and iPhone notes weren't seen: the checks run neither.*
+- [x] The frame: the unchanged UI, plugins and all: a chat, the library, the computer's desktop, a page, and Settings. *A chat, an image by address, a sandboxed page as the pages plugin draws one, and Settings › Web pairing, which says to use the web app's own screen. The computer's desktop wasn't run.*
+- [x] Against a disposable fxbot on this machine, with `FXBOT_PORT` off 8787 and a local relay. *Port 8772, its own Postgres on a tmpfs, and the relay at 8771.*
 
 **M5. Getting through, and saying so**
-- [ ] The ICE list, with Cloudflare's STUN as the one default entry:
+- [x] The ICE list, with Cloudflare's STUN as the one default entry:
   - add, move, and remove entries, Cloudflare's included
   - the three kinds of TURN, with credentials minted and sealed
   - a capture on fxbot's machine shows packets only to listed servers, and none to Google's
-- [ ] The fixed UDP range, IPv6, and NAT-PMP and UPnP mapping, renewed and shown.
-- [ ] Reachability, each case in a throwaway container's own network, with its own nftables, so nothing changes on this machine:
+
+  *9 checks: each kind added, an address that isn't STUN refused, no password or secret back to the page, a shared secret minted into a 24-hour credential, the list in order to the device, Cloudflare's removed and back. A Cloudflare TURN key with a made-up token was refused by Cloudflare and added nothing; a real key wasn't tried. A capture on every interface during a pairing and connection: fxbot's ports 8790–8794 and the browser sent STUN to `stun.cloudflare.com` only, with no packet to Google's and no lookup of it; the only other STUN was the machine's own Tailscale.*
+- [ ] The fixed UDP range, IPv6, and NAT-PMP and UPnP mapping, renewed and shown. *werift's sockets were on 8790–8795. IPv6 sockets open only with a global address, which this machine hasn't. Mapping: no router here answers either protocol, and the tab says so; a mapping and its renewal weren't seen.*
+- [x] Reachability, each case in a throwaway container's own network, with its own nftables, so nothing changes on this machine:
   - UDP blocked
   - one STUN server, then two
   - a symmetric NAT
   - an address in 100.64/10
   - a container
-- [ ] The device's own checks, and the 15-second notice, with the right findings and links for each case.
+
+  *In containers: one with no network said UDP is blocked, and one on podman's bridge said it's in a container. On this machine: UDP out, two answers, one port. The rest from STUN servers on this machine that answer as each network would, with no nftables: one answer, two with one port, two with two (symmetric), an address in 100.64/10, a router whose address differs, a mapped port, a TURN server in the list, and an empty list. 9 checks pass.*
+- [x] The device's own checks, and the 15-second notice, with the right findings and links for each case. *A device whose browser found no path showed the notice at 15.4 s, with what it found and fxbot's findings, and the five ways through in order. Each finding's link lands on its section.*
 
 **M6. Docs**
-- [ ] Every page above, `npm run build-site`, and `CHANGELOG.md`.
-- [ ] Each link from the notice and from Reachability lands on its section.
+- [x] Every page above, `npm run build-site`, and `CHANGELOG.md`. *Ten new pages and Reach it. The site builds, with every link resolving.*
+- [x] Each link from the notice and from Reachability lands on its section. *All 17 of `wire.ts`'s links, checked against the built site.*
 
 **M7. Passkey recovery, opt-in**
-- [ ] Setting it up after pairing; using it on a wiped device; fxbot checking the origin, the rpId, user verification, the signature, the time, and the nonce; and every device told.
+- [x] Setting it up after pairing; using it on a wiped device; fxbot checking the origin, the rpId, user verification, the signature, the time, and the nonce; and every device told. *With Chromium's virtual authenticator: added from a paired device's Devices screen, then a new browser with only the passkey paired, listed as by passkey, and opened fxbot. A connected device showed that a device paired with a passkey. Whether a passkey works in an iOS Home Screen app wasn't checked.*
 
 **Human checks**
 - [ ] An iPhone (Home Screen app) and an Android phone, each paired at home:
@@ -839,9 +879,9 @@ Decided by the owner on 2026-11-09 (see What the owner asked):
 - A second relay waits for adoption.
 
 Still open:
-1. **Frame names: `<frame>.fxbot.sh` or `<frame>.web.fxbot.sh`?** The default is `<frame>.fxbot.sh`, which Cloudflare's free certificate covers. The second reads better but needs Advanced Certificate Manager, about $10 a month.
-2. **A short code with CPace, or a long one without a PAKE?** The default is `47-3816-0925` with CPace, 28 lines checked against the draft's vectors. A code of about 20 base32 characters, around 100 bits, needs no PAKE and no `@noble/curves`, but it's longer to type.
-3. **The passkey (M7): build it, opt-in?** The default is yes: it's the one way back with no other device and nobody at home, and it can't be phished. Whether it works in an iOS Home Screen app is untested.
-4. **Cloudflare's free plan, or paid ($5 a month)?** The default is paid from launch. On the free plan, going over the cap stops every pairing worldwide until midnight UTC. Essentials adds no load until a device is paired.
-5. **May a paired device pair others?** The default is yes, since that's what keeps a pairing from waiting for home. The alternative is that only fxbot's own screen approves.
-6. **If werift fails a browser in M1, fix it or fork it?** The default is a fix upstream, with a fork bundled meanwhile. It's plain TypeScript with one maintainer, so either is in reach. node-datachannel connects in a third of the time at 2–3× the speed, but it's native, so core would have to carry it, which the owner ruled out.
+1. **Frame names: `<frame>.fxbot.sh` or `<frame>.web.fxbot.sh`?** The default is `<frame>.fxbot.sh`, which Cloudflare's free certificate covers. The second reads better but needs Advanced Certificate Manager, about $10 a month. *Built as the default: 16 base32 characters the shell picks, and the Worker answers only names of that shape.*
+2. **A short code with CPace, or a long one without a PAKE?** The default is `47-3816-0925` with CPace, 28 lines checked against the draft's vectors. A code of about 20 base32 characters, around 100 bits, needs no PAKE and no `@noble/curves`, but it's longer to type. *Built as the default.*
+3. **The passkey (M7): build it, opt-in?** The default is yes: it's the one way back with no other device and nobody at home, and it can't be phished. Whether it works in an iOS Home Screen app is untested. *Built, opt-in, and checked with Chromium's virtual authenticator. iOS is still untested.*
+4. **Cloudflare's free plan, or paid ($5 a month)?** The default is paid from launch. On the free plan, going over the cap stops every pairing worldwide until midnight UTC. Essentials adds no load until a device is paired. *The owner's, at deploy.*
+5. **May a paired device pair others?** The default is yes, since that's what keeps a pairing from waiting for home. The alternative is that only fxbot's own screen approves. *Built as the default.*
+6. **If werift fails a browser in M1, fix it or fork it?** The default is a fix upstream, with a fork bundled meanwhile. It's plain TypeScript with one maintainer, so either is in reach. node-datachannel connects in a third of the time at 2–3× the speed, but it's native, so core would have to carry it, which the owner ruled out. *Neither was needed: with fxbot making the offer, Firefox connects (see **Built**).*
