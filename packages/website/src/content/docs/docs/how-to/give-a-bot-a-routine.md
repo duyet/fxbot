@@ -14,6 +14,9 @@ When it runs, the bot works in a session of its own, beside its chat, so you can
 
 For a task that matters only sometimes, say so: "every hour, check the price, and tell me only if it drops". A run with nothing to say stays quiet.
 
+<img class="shot dark:sl-hidden" src="/shots/routine-desktop-light.png" width="1024" height="800" alt="Pixel's chat: the owner asks for design reading every Monday, and the routine is added, with Remove" />
+<img class="shot light:sl-hidden" src="/shots/routine-desktop-dark.png" width="1024" height="800" alt="Pixel's chat: the owner asks for design reading every Monday, and the routine is added, with Remove" />
+
 ## What a run can do
 
 Everything the bot can do in its chat. It has its tools, its [computer](/docs/how-to/give-bots-a-computer/), the MCP servers you allowed it, its skills, its memories, and its library, and whatever else your plugins give it. What it saves to its library comes back with the result, and opens from the chat. Up to 5 files go with the message, and it names the rest, which stay in its library.

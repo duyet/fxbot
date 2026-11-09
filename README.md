@@ -6,7 +6,10 @@ fxbot is your bot, built and configured how you want it. It starts simple, with 
 
 fxbot is local first. One Node server and Postgres run on your own machine, and the browser is the UI on desktop and mobile. [libfx](https://fx.sh/docs/lib) sends each chat to the provider its bot uses: a local model server such as Ollama or LM Studio, an API key, or a ChatGPT, Grok, or Vercel account signed in with a device code.
 
-![fxbot in a desktop browser: Bob's chat open, with Fernando and Securely in the sidebar](docs/screenshot.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="packages/website/public/shots/hero-desktop-dark.png">
+  <img src="packages/website/public/shots/hero-desktop-light.png" width="1280" alt="fxbot in a desktop browser: Juniper's chat, with a page it wrote, and the other bots in the sidebar. The bots and what they say are made up.">
+</picture>
 
 Simplicity is the rule: a small core, few dependencies, and no abstraction until a second real use. The core is what every bot needs, and everything else is a plugin. See [Core or plugin](CONVENTIONS.md#core-or-plugin).
 

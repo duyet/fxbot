@@ -1,7 +1,6 @@
 import { cn } from "cn";
 import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
-import screenshot from "../../../docs/screenshot.png";
 import { Blob, colorCount, shapeCount } from "./blob.tsx";
 import { Command } from "./code.tsx";
 import { buttonVariants } from "./components/ui/button.tsx";
@@ -9,7 +8,7 @@ import { latest } from "./release.ts";
 import { Shell } from "./layout.tsx";
 import { agentPrompt, changelogPath, href, installCommand, repo } from "./site.ts";
 
-// Bob, Fernando, and Securely from the screenshot, and a few friends. One is busy, as a bot is during a turn.
+// Juniper, Atlas, and Pixel from the screenshots, and a few friends. One is busy, as a bot is during a turn.
 const crowd: { shape: string; color: string; size: number; mood?: string; head?: string; face?: string; outfit?: string; busy?: boolean }[] = [
   { shape: "circle", color: "blue", head: "headphones", size: 76 },
   { shape: "egg", color: "amber", mood: "happy", head: "beret", outfit: "scarf", size: 66 },
@@ -107,6 +106,28 @@ await fxbot.send(bot.id, {
   messageId: crypto.randomUUID(),
 });`;
 
+// A screenshot from scripts/screenshots, in the theme the page is in. With `phone`, a narrow screen gets the phone's.
+const sizes = { desktop: [1280, 800], phone: [390, 844] };
+function Shot({ name, alt, phone = false, device = "desktop", className = "" }: { name: string; alt: string; phone?: boolean; device?: "desktop" | "phone"; className?: string }) {
+  const [width, height] = sizes[device];
+  return (["light", "dark"] as const).map((theme) => (
+    <picture key={theme} className={cn(theme === "light" ? "theme-light" : "theme-dark", className)}>
+      {phone && <source media="(max-width: 639px)" srcSet={href(`/shots/${name}-phone-${theme}.png`)} width={390} height={844} />}
+      <img src={href(`/shots/${name}-${device}-${theme}.png`)} width={width} height={height} alt={alt} loading="lazy" decoding="async" className="block h-auto w-full" />
+    </picture>
+  ));
+}
+
+// The gallery under the hero: what the app looks like, each linked to its guide.
+const gallery: { name: string; title: string; body: string; link: string; alt: string; phone?: boolean }[] = [
+  { name: "look", title: "A look for each bot", body: "32 shapes, a feeling, and things to wear, drawn as you pick.", link: "/docs/explanation/bots-and-chats/", alt: "The New bot screen, with a green bunny in a beanie and the Shape tab open", phone: true },
+  { name: "page", title: "Pages you keep", body: "Reports and plans a bot writes, with boxes you tick, kept in the library.", link: "/docs/how-to/keep-what-a-bot-writes/", alt: "A page called A slow weekend in Lisbon, with a ticked task list", phone: true },
+  { name: "room", title: "Rooms", body: "Several bots in one chat. Tag the ones you want.", link: "/docs/how-to/talk-in-a-room/", alt: "A chat room called Garden party, where Pixel and Sprout answer the owner", phone: true },
+  { name: "together", title: "Bots that work together", body: "One bot asks another, and you watch it happen in their chats.", link: "/docs/how-to/let-bots-work-together/", alt: "Sprout's chat, with pills for the message it sent Atlas and the answer it got" },
+  { name: "approval", title: "You decide what needs asking", body: "A bot waits at a card for what you want to see first.", link: "/docs/how-to/choose-what-a-bot-can-do-alone/", alt: "A card in Rook's chat asking to add a routine, with Approve once, Always allow, and Deny" },
+  { name: "plugins", title: "Plugins you pick", body: "Start with Essentials, and add only what you want.", link: "/docs/how-to/add-a-plugin/", alt: "The Plugins screen, on Browse, with Essentials at the top", phone: true },
+];
+
 function SectionTitle({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
   return (
     <div className="max-w-2xl">
@@ -170,10 +191,37 @@ export function Home() {
                 <span className="mx-auto truncate rounded-md bg-background px-3 py-0.5 font-mono text-xs text-muted-foreground">https://bot.&lt;tailnet&gt;.ts.net</span>
                 <span aria-hidden="true" className="w-[42px]" />
               </div>
-              <img src={screenshot.src} width={2530} height={1700} alt="fxbot in a desktop browser: Bob's chat open, with Fernando and Securely in the sidebar" className="block h-auto w-full" />
+              <Shot name="hero" alt="fxbot in a desktop browser: Juniper's chat, with a page it wrote, and the other bots in the sidebar" />
             </div>
-            <figcaption className="mt-3 text-sm text-muted-foreground">Bob's chat in a desktop browser, with Fernando and Securely in the sidebar.</figcaption>
+            <div className="relative">
+              <div className="absolute right-6 -bottom-6 hidden w-52 overflow-hidden rounded-[2rem] border-4 border-foreground/80 bg-card shadow-[0_24px_60px_-20px_rgb(0_0_0/0.45)] lg:block xl:w-60">
+                <Shot name="hero" device="phone" alt="The same chat on a phone" />
+              </div>
+            </div>
+            <figcaption className="mt-3 text-sm text-muted-foreground lg:max-w-[calc(100%-18rem)]">Juniper's chat on a desktop and a phone. The bots, and everything they say, are made up for these pictures.</figcaption>
           </figure>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-4 pt-20 sm:px-6 sm:pt-28">
+          <SectionTitle eyebrow="A look around" title="What it looks like" />
+          <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {gallery.map((shot) => (
+              <li key={shot.name}>
+                <a href={href(shot.link)} className="group grid gap-3">
+                  <div className="overflow-hidden rounded-xl border bg-card shadow-sm transition group-hover:shadow-md">
+                    <Shot name={shot.name} alt={shot.alt} phone={shot.phone} />
+                  </div>
+                  <div>
+                    <h3 className="flex items-center gap-1.5 font-semibold">
+                      {shot.title}
+                      <ArrowRight aria-hidden="true" className="size-4 -translate-x-1 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-60" />
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-pretty text-muted-foreground">{shot.body}</p>
+                  </div>
+                </a>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="mx-auto grid max-w-6xl gap-10 px-4 pt-20 sm:px-6 sm:pt-28 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-16">

@@ -16,6 +16,9 @@ By default, fxbot shows only the plugins it vets, tagged **fxbot**. Each has a p
 4. To change its settings, open its tab in **Settings**. Each plugin has one, with its bots, settings, log, updates, and **Remove**. A secret setting is sealed, and the page never shows it again. A plugin's MCP servers are on its tab too, each with its own sign-in or key and tools.
 5. To give it to some bots only, choose **Choose** under **Bots**, and switch it on for each bot that should have it. Its servers follow, and its screens are for everyone.
 
+<img class="shot dark:sl-hidden" src="/shots/plugins-desktop-light.png" width="1280" height="800" alt="The Plugins screen on Browse, with Essentials at the top and fxbot's picks below" />
+<img class="shot light:sl-hidden" src="/shots/plugins-desktop-dark.png" width="1280" height="800" alt="The Plugins screen on Browse, with Essentials at the top and fxbot's picks below" />
+
 ## Essentials
 
 **Essentials**, at the top of **Browse**, is what most people want from fxbot, and it's what first-run setup offers. **Add the other 3** adds the ones you don't have, in order, and shows how each went. One that fails doesn't stop the rest. **What's in it** lists them, each opening its page, where you can read its code.

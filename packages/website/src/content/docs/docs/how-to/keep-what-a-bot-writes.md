@@ -9,6 +9,9 @@ A page is something a bot writes for you to read and keep, outside the chat, suc
 2. Ask a bot for something to keep, in your own words: "write up our trip plan as a page", or "make a report on last week's sales".
 3. The bot writes it, and says in a sentence what it covers. A card in the chat has the page's title and **Open**.
 
+<img class="shot dark:sl-hidden" src="/shots/page-desktop-light.png" width="1280" height="800" alt="A page called A slow weekend in Lisbon, with two boxes ticked" />
+<img class="shot light:sl-hidden" src="/shots/page-desktop-dark.png" width="1280" height="800" alt="A page called A slow weekend in Lisbon, with two boxes ticked" />
+
 ## Read it
 
 **Open** fills the screen with the page, at an address of its own, on a phone too. It can have headings, tables, code, and images from the library.
@@ -42,6 +45,9 @@ When a page needs more than text, such as a chart with filters, ask for that, an
 - A button on a page can draft a message to the bot. You read it, and choose **Send**.
 - If a page hits an error, a line below it says so, and **Tell the bot** drafts a message about it.
 - **Open in a tab** opens it alone, to print.
+
+<img class="shot dark:sl-hidden" src="/shots/chart-desktop-light.png" width="1024" height="800" alt="An HTML page Ledger wrote: this month's spending, as bars by category" />
+<img class="shot light:sl-hidden" src="/shots/chart-desktop-dark.png" width="1024" height="800" alt="An HTML page Ledger wrote: this month's spending, as bars by category" />
 
 ## Keep its numbers current
 

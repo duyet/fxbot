@@ -64,6 +64,9 @@ The first time you open it, fxbot shows **Essentials**: the plugins most people 
 
 Tap **Set up Essentials**. fxbot adds them one by one, and moves on by itself. To pick your own instead, tap **Choose my own**, where they're already ticked, and untick what you don't want. Plugins you leave out are under **Plugins** for later.
 
+<img class="shot dark:sl-hidden" src="/shots/setup-choose-desktop-light.png" width="1280" height="1000" alt="First-run setup, on Essentials: the plugins most people want, each with what it gives you" />
+<img class="shot light:sl-hidden" src="/shots/setup-choose-desktop-dark.png" width="1280" height="1000" alt="First-run setup, on Essentials: the plugins most people want, each with what it gives you" />
+
 ### Connect a model
 
 Choose **Add provider…**, then **ChatGPT plan**.
@@ -74,6 +77,9 @@ With a key instead, choose **OpenAI key** or **OpenRouter key**, paste the key, 
 
 Then pick the model your bots use, and tap **Continue**.
 
+<img class="shot dark:sl-hidden" src="/shots/setup-provider-desktop-light.png" width="1280" height="800" alt="First-run setup, on Connect a model, with Add provider" />
+<img class="shot light:sl-hidden" src="/shots/setup-provider-desktop-dark.png" width="1280" height="800" alt="First-run setup, on Connect a model, with Add provider" />
+
 ### Make a bot
 
 Name the bot `Scout`, pick how it looks, or tap **Surprise me**, and tap **Create**. As you choose, the bot watches.
@@ -81,6 +87,9 @@ Name the bot `Scout`, pick how it looks, or tap **Surprise me**, and tap **Creat
 fxbot says where plugins live for later. Tap **Start chatting**, and Scout's chat opens.
 
 If you leave partway, fxbot comes back to the same step. **Skip for now** ends it, and everything it does is still there: **Plugins** at the foot of the sidebar, **Settings** › **Providers**, and **New bot**.
+
+<img class="shot dark:sl-hidden" src="/shots/setup-bot-desktop-light.png" width="1280" height="800" alt="First-run setup, on Make a bot, with the look picker" />
+<img class="shot light:sl-hidden" src="/shots/setup-bot-desktop-dark.png" width="1280" height="800" alt="First-run setup, on Make a bot, with the look picker" />
 
 ## Chat
 

@@ -303,3 +303,9 @@ h1#_top,
 .fxbot-plugin-head p {
   margin: 0;
 }
+
+/* Screenshots from scripts/screenshots, one per theme. */
+.sl-markdown-content img.shot {
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.75rem;
+}

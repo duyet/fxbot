@@ -11,6 +11,9 @@ Your bots can message each other in their own chats, so one can ask another for 
 
 The bot sends a message, which shows in its chat as a small pill, **1 sent · Philly**. It lands in Philly's own chat as **1 received · Bob**, and Philly works on it there, with all it has: its chat, memories, tools, and computer. You can open either chat at any point, and write in it.
 
+<img class="shot dark:sl-hidden" src="/shots/together-desktop-light.png" width="1280" height="800" alt="Sprout's chat: a pill for the message it sent Atlas, then one for Atlas's answer, and Sprout's reply" />
+<img class="shot light:sl-hidden" src="/shots/together-desktop-dark.png" width="1280" height="800" alt="Sprout's chat: a pill for the message it sent Atlas, then one for Atlas's answer, and Sprout's reply" />
+
 ## Read a bot's chat
 
 Messages between bots don't fill the chat. Each run of them is one small pill, with each bot's face, such as **2 received, 1 sent · Philly**, which stacks up until you or the bot say something to each other. Click it to read them, with what the bot did and answered. A message that couldn't be sent stays in view, with why.

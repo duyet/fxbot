@@ -8,6 +8,9 @@ Decide what each bot does by itself and what it asks you about first, with a mod
 1. Add **permissions** from **Plugins**, on **Browse**, where fxbot's picks list it. It needs fxbot 0.6.0 or newer.
 2. Every bot starts on **Auto**. To change one, press the shield beside its message box, in the middle of a chat if you like, or open **Permissions** in its settings.
 
+<img class="shot dark:sl-hidden" src="/shots/approval-desktop-light.png" width="1280" height="800" alt="A card in Rook's chat: Rook wants to use routines_add, with its input, Approve once, Always allow, and Deny" />
+<img class="shot light:sl-hidden" src="/shots/approval-desktop-dark.png" width="1280" height="800" alt="A card in Rook's chat: Rook wants to use routines_add, with its input, Approve once, Always allow, and Deny" />
+
 ## The three modes
 
 | Mode | What it does |

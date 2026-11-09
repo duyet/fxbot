@@ -9,6 +9,9 @@ A bot in fxbot is meant to be talked to for months, not for one task. This page 
 
 A bot is a name, instructions, a provider and a model, and a look: one of 32 shapes in one of eleven colors, with a feeling, and something on its head, its face, and its body. It blinks and watches the pointer, hops while it works, looks at you while a call waits on an answer, smiles when it finishes, and sleeps when it has no provider. Up to three bots can be pinned to the top of the list.
 
+<img class="shot dark:sl-hidden" src="/shots/look-desktop-light.png" width="1280" height="800" alt="The New bot screen: a green bunny in a beanie, with the Shape tab open" />
+<img class="shot light:sl-hidden" src="/shots/look-desktop-dark.png" width="1280" height="800" alt="The New bot screen: a green bunny in a beanie, with the Shape tab open" />
+
 ## One chat that lasts
 
 Each bot has one long-running chat, a durable libfx session on the server. The page only shows it, so the chat survives a reload, a closed app, and a server restart, and a reply carries on while nobody watches.
@@ -31,6 +34,9 @@ To end a turn instead, press **Stop**, where the send button is while the box is
 ## The sidebar
 
 The sidebar lists your bots, with up to three pinned on top, larger. Drag a bot to move it, with a mouse, or with a finger after a moment's hold, so a swipe still scrolls. Pinned bots move among themselves, and a bot you pin or unpin goes to the end of its group. Right-click a bot, or hold it on a phone, for its menu: **Edit**, **Pin** or **Unpin**, **Default bot**, and **Delete**.
+
+<img class="shot dark:sl-hidden" src="/shots/menu-desktop-light.png" width="1280" height="800" alt="A bot's menu in the sidebar: Edit, Pin, Default bot, and Delete" />
+<img class="shot light:sl-hidden" src="/shots/menu-desktop-dark.png" width="1280" height="800" alt="A bot's menu in the sidebar: Edit, Pin, Default bot, and Delete" />
 
 ## The default bot
 

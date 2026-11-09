@@ -5,6 +5,9 @@ description: "A provider is where a bot's model runs. Open Settings \u203a Provi
 
 A provider is where a bot's model runs. Open **Settings** › **Providers**, choose **Add provider…**, and pick one. What comes next depends on how it connects.
 
+<img class="shot dark:sl-hidden" src="/shots/providers-desktop-light.png" width="1280" height="800" alt="The Add Ollama dialog in Settings, with a name, an address, and a context window" />
+<img class="shot light:sl-hidden" src="/shots/providers-desktop-dark.png" width="1280" height="800" alt="The Add Ollama dialog in Settings, with a name, an address, and a context window" />
+
 ## An account, with a device code
 
 For **ChatGPT plan**, **Grok plan**, and **Vercel account**.

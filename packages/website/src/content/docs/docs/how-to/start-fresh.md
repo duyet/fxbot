@@ -11,6 +11,9 @@ description: "/fresh, from the fresh plugin, starts a bot's chat over toward wha
 
 The chat then shows a **Started over** card, which opens to the summary, then your message without `/fresh`, and the bot's answer. The old chat stays above the card, and the bot finds what was said there with `chat_history`. Every page open on the bot follows to the new chat.
 
+<img class="shot dark:sl-hidden" src="/shots/fresh-desktop-light.png" width="1024" height="800" alt="Atlas's chat, with /fre typed in the message box and fresh offered above it" />
+<img class="shot light:sl-hidden" src="/shots/fresh-desktop-dark.png" width="1024" height="800" alt="Atlas's chat, with /fre typed in the message box and fresh offered above it" />
+
 ## What the summary keeps
 
 - who you are, and the preferences and rules you set, each rule in your own words
