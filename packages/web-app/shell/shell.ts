@@ -140,7 +140,11 @@ export class Link {
   private callId = 0;
   private retry = 1000;
   private timer?: ReturnType<typeof setTimeout>;
-  onEvent: (m: any) => void = () => {};
+  // What fxbot tells every connected device: that a device was added, and that the list changed.
+  onEvent = (m: any) => {
+    if (m.event === "added") announce(`${this.p.name}: ${m.name ?? "A device"}${m.platform ? ` (${m.platform})` : ""} was paired${m.how === "passkey" ? " with a passkey" : ""}. If that wasn't you, remove it under Devices.`);
+    if (devicesState.rid === this.p.rid && (m.event === "added" || m.event === "devices")) void loadDevices(this);
+  };
   p: Pairing;
   constructor(p: Pairing) {
     this.p = p;
@@ -380,6 +384,9 @@ addEventListener("message", (e) => {
 // owner's approval on the side that showed the code.
 type Progress = { step: "working" | "compare" | "done" | "failed"; text: string; sas?: string; rid?: string };
 let progress: Progress | null = null;
+// Notes that stay until dismissed, such as a device added elsewhere.
+let notices: string[] = [];
+const announce = (text: string) => ((notices = [...notices, text]), render());
 const setProgress = (p: Progress | null) => ((progress = p), render());
 
 async function pairWith(t: { rid: string; tid: Bytes; I: Bytes; relay: string }, via: Inbox, psk: Bytes, how: string) {
@@ -499,7 +506,7 @@ function render() {
   // Frames stay alive behind the screens, so going back and opening again is instant.
   for (const link of links.values()) link.iframe?.classList.toggle("shown", view.name === "open" && view.rid === link.p.rid);
   document.body.classList.toggle("framed", view.name === "open");
-  app.replaceChildren(screen());
+  app.replaceChildren(screen(), ...notices.map((text, i) => h("div", { class: "announce", role: "status" }, h("span", {}, text), h("button", { class: "ghost small", onclick: () => ((notices = notices.filter((_, j) => j !== i)), render()) }, "OK"))));
 }
 function screen(): HTMLElement {
   if (progress) return pairingScreen(progress);
@@ -574,7 +581,8 @@ function pairingScreen(p: Progress) {
     p.sas && h("p", { class: "sas", "aria-label": "Six digits" }, `${p.sas.slice(0, 3)} ${p.sas.slice(3)}`),
     h("p", { class: p.step === "failed" ? "note bad" : "" }, p.text),
     p.step === "compare" && h("p", { class: "muted small" }, "If the digits don't match, don't approve: someone else may be pairing."),
-    p.step === "done" && persisted === false && h("p", { class: "note warn" }, "The browser didn't promise to keep this site's storage, so it may clear the pairing when space runs low. Pair a second device too, or add a passkey, so you can pair again from anywhere."),
+    p.step === "done" && persisted === false && h("p", { class: "note warn" }, "The browser didn't promise to keep this site's storage, so it may clear the pairing when space runs low."),
+    p.step === "done" && h("p", { class: "muted small" }, "Pair a second device too, or add a passkey, so a device that loses its storage can pair again from anywhere."),
     p.step === "done" && persisted === true && h("p", { class: "muted small" }, "The browser will keep this pairing."),
     h("div", { class: "actions" },
       p.step === "done" && h("button", { class: "primary", onclick: () => ((progress = null), open(links.get(p.rid!)!)) }, "Open"),
