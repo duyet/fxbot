@@ -2,12 +2,18 @@ import { createFxAgent, type FxAgent, type FxAgentEvent, type FxAgentTool, type 
 import * as chatgpt from "libfx/chatgpt";
 import type { Durability } from "libfx/durable-world";
 import * as grok from "libfx/grok";
+import { fill, type ProviderCatalog } from "./catalog.ts";
+import type { Device } from "./device.ts";
+import type { EmbeddingsTarget } from "./embeddings.ts";
+import * as huggingface from "./huggingface.ts";
 import { createModels, type Access } from "./models.ts";
+import * as openrouter from "./openrouter.ts";
+import * as orcarouter from "./orcarouter.ts";
 import { createSecrets, withoutSecrets } from "./secrets.ts";
 import { newId, type ProviderRecord, type Sql, type Store } from "./store.ts";
-import type { EmbeddingsTarget } from "./embeddings.ts";
-import { embeddingKinds, kinds, type Kind, type NewProvider, type Provider, type ProviderUpdate, type SignIn, type SignInStatus } from "./types.ts";
+import { embeddingKinds, type CatalogEntry, type NewProvider, type Provider, type ProviderUpdate, type SignIn, type SignInStatus } from "./types.ts";
 import * as vercel from "./vercel.ts";
+import * as vertex from "./vertex.ts";
 
 type Fetch = typeof fetch;
 const fail = (status: number, message: string): never => {
@@ -16,6 +22,8 @@ const fail = (status: number, message: string): never => {
 const plans = { chatgpt, grok };
 const refreshSkewMs = 5 * 60 * 1000;
 const loopback = new Set(["localhost", "127.0.0.1", "[::1]"]);
+// A provider's sealed secret: a key, a plan's or an account's tokens, or Vertex AI's service account and its token.
+type Held = { apiKey?: string; accessToken?: string; refreshToken?: string; expiresAt?: number; serviceAccount?: vertex.ServiceAccount };
 
 // libfx's rule for a custom provider's address. libfx checks it only when a turn starts, so it is checked here first.
 export function checkBaseUrl(value: unknown) {
@@ -45,6 +53,19 @@ function opencodeFetch(fetch: Fetch): Fetch {
   };
 }
 
+// An entry's own headers on every request to it, such as OpenRouter's attribution or Azure's `api-key`, where
+// `{apiKey}` is the provider's key, masked if an error body quotes it. None: libfx's own fetch.
+function entryFetch(fetch: Fetch, entry: CatalogEntry, key: () => Promise<string | undefined>): Fetch | undefined {
+  const extra = Object.entries(entry.headers ?? {});
+  if (!extra.length) return undefined;
+  return async (input, init = {}) => {
+    const apiKey = await key();
+    const headers = new Headers(init.headers);
+    for (const [name, value] of extra) if (apiKey || !value.includes("{apiKey}")) headers.set(name, value.replaceAll("{apiKey}", apiKey ?? ""));
+    return withoutSecrets(await fetch(input, { ...init, headers }), [apiKey]);
+  };
+}
+
 const text = (value: unknown, name: string, max = 200) => {
   if (typeof value !== "string") return fail(400, `${name} must be a string`);
   if (value.trim().length > max) fail(400, `${name} is over ${max} characters`);
@@ -52,27 +73,50 @@ const text = (value: unknown, name: string, max = 200) => {
 };
 const contextField = (value: unknown) =>
   value === null || (Number.isInteger(value) && (value as number) > 0 && (value as number) <= 100_000_000) ? (value as number | null) : fail(400, "contextWindow must be a whole number of tokens, or null");
+// Model ids the owner typed, such as Azure's deployments: up to 100, each as a model is named.
+const idsOf = (value: unknown) => {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > 100) return fail(400, "modelIds must be a list of up to 100 model ids");
+  return [...new Set(value.map((id) => text(id, "a model id")).filter(Boolean))];
+};
+// An entry's fields, each filled as its address takes it, with its default when it has one.
+const fieldsOf = (entry: CatalogEntry, values: unknown) => {
+  if (values !== undefined && (typeof values !== "object" || values === null || Array.isArray(values))) fail(400, "fields must be an object");
+  return Object.fromEntries((entry.fields ?? []).map((f) => [f.name, fill(`{${f.name}}`, entry, (values ?? {}) as Record<string, string>)]));
+};
+// OpenRouter can send the browser back only to a page it can reach from it: HTTPS, or this machine.
+const comesBack = (origin?: string) => {
+  if (!origin || !URL.canParse(origin) || new URL(origin).origin !== origin) return false;
+  const url = new URL(origin);
+  return url.protocol === "https:" || (url.protocol === "http:" && loopback.has(url.hostname));
+};
 
 export type ProvidersOptions = {
   store: Store;
   secretKey: Buffer;
   /** Where every agent keeps its sessions (sessions.ts). */
   durability: Durability;
+  /** OAuth apps at Vercel and Hugging Face, in place of the catalog's. */
   vercelClientId?: string;
+  hfClientId?: string;
+  catalog: ProviderCatalog;
   fetch: Fetch;
   tools: FxAgentTool[];
 };
 
 // Every provider runs as its own libfx agent, because libfx gives an agent one provider and a session runs only on
 // the agent that started it. Keys and tokens live sealed in Postgres and reach libfx only through its callbacks.
-export async function createProviders({ store, secretKey, durability, vercelClientId, fetch, tools }: ProvidersOptions) {
+export async function createProviders({ store, secretKey, durability, vercelClientId, hfClientId, catalog, fetch, tools }: ProvidersOptions) {
   const secrets = createSecrets(store.sql, secretKey);
-  const models = createModels(store.sql, fetch);
+  const models = createModels(store.sql, fetch, catalog);
   const agents = new Map<string, { agent: FxAgent; models: Record<string, FxCustomProviderModel> | null }>();
   // Why a provider has no agent, such as a secret that will not open. The server keeps running.
   const errors = new Map<string, string>();
   // The last refusal each provider gave, until it next answers. libfx retries one out of sight, for as long as it's let.
   const refused = new Map<string, { status: number; at: number }>();
+  // fxbot's own apps, as the environment or the catalog names them. A sign-in with none isn't offered.
+  const vercelId = () => vercelClientId || catalog.get("vercel")?.clientId || "";
+  const hfId = () => hfClientId || catalog.get("huggingface")?.clientId || "";
 
   // One queue per provider, so its tokens are renewed once at a time: by libfx for turns and by the SDK for its own calls.
   const locks = new Map<string, Promise<unknown>>();
@@ -94,17 +138,37 @@ export async function createProviders({ store, secretKey, durability, vercelClie
       return next;
     });
   }
+  // Vertex AI's token, made again from the service account 5 minutes before it ends.
+  async function vertexToken(id: string) {
+    const fresh = (held: Held) => held.accessToken && held.expiresAt && held.expiresAt - refreshSkewMs > Date.now();
+    const current = (await secrets.get<Held>(id)) ?? fail(400, "This provider has no service account.");
+    if (fresh(current)) return current.accessToken!;
+    return locked(id, async () => {
+      const latest = (await secrets.get<Held>(id))!;
+      if (fresh(latest)) return latest.accessToken!;
+      const minted = await vertex.token(latest.serviceAccount!, fetch);
+      await secrets.put(id, { serviceAccount: latest.serviceAccount, ...minted });
+      return minted.accessToken;
+    });
+  }
 
   const vercelFetch = (record: ProviderRecord) =>
-    vercel.vercelFetch(async () => ({ credentials: await renewed<vercel.VercelCredentials>(record.id, (old) => vercel.refresh(old, vercelClientId!, fetch)), teamId: record.teamId }), fetch);
-  const keyOf = async (record: ProviderRecord) => (await secrets.get<{ apiKey?: string }>(record.id))?.apiKey;
+    vercel.vercelFetch(async () => ({ credentials: await renewed<vercel.VercelCredentials>(record.id, (old) => vercel.refresh(old, vercelId(), fetch)), teamId: record.teamId }), fetch);
+  const keyOf = async (record: ProviderRecord) => (await secrets.get<Held>(record.id))?.apiKey;
+  // The bearer a provider's requests carry, read at each one: its key, Vertex AI's token, or a Hugging Face sign-in's.
+  async function bearerOf(record: ProviderRecord) {
+    const held = await secrets.get<Held>(record.id);
+    if (held?.serviceAccount) return vertexToken(record.id);
+    if (held?.accessToken && record.kind === "huggingface") return (await renewed<huggingface.HfCredentials>(record.id, (old) => huggingface.refresh(old, hfId(), fetch))).accessToken;
+    return held?.apiKey;
+  }
 
   // What the SDK's own requests to a provider need, outside a turn.
   async function access(record: ProviderRecord): Promise<Access> {
     if (record.kind === "chatgpt" || record.kind === "grok")
       return renewed<FxProviderCredentials>(record.id, (old) => plans[record.kind as "chatgpt"].refreshCredentials(old, { fetch }));
     if (record.kind === "vercel") return { fetch: vercelFetch(record) };
-    return { apiKey: await keyOf(record) };
+    return { apiKey: await bearerOf(record), fetch: entryFetch(fetch, models.entryOf(record), () => bearerOf(record)) };
   }
 
   // The libfx options that point an agent, or a throwaway engine, at a provider.
@@ -117,12 +181,15 @@ export async function createProviders({ store, secretKey, durability, vercelClie
         refreshLock: (_: unknown, refresh: () => Promise<void>) => locked(record.id, refresh),
       };
     if (record.kind === "vercel") return { apiKey: "vercel-login", fetch: vercelFetch(record) };
-    const apiKey = await keyOf(record);
-    if (record.kind === "gateway") return { apiKey: apiKey ?? fail(400, "This provider has no key.") };
+    const held = await secrets.get<Held>(record.id);
+    if (record.kind === "gateway") return { apiKey: held?.apiKey ?? fail(400, "This provider has no key.") };
     const provider = { name: `p-${record.id}`, baseUrl: record.baseUrl!, models: {} };
     // Read at each request, so a key that's replaced or removed stops working at once, even for a turn already running.
-    const key = async () => (await keyOf(record)) ?? fail(400, "This provider has no key.");
-    if (record.kind !== "opencode" && record.kind !== "opencode-go") return { provider, ...(apiKey ? { credentials: async () => ({ apiKey: await key() }) } : {}) };
+    const key = async () => (await bearerOf(record)) ?? fail(400, "This provider has no key.");
+    if (record.kind !== "opencode" && record.kind !== "opencode-go") {
+      const own = entryFetch(fetch, models.entryOf(record), () => bearerOf(record));
+      return { provider, ...(held ? { credentials: async () => ({ apiKey: await key() }) } : {}), ...(own ? { fetch: own } : {}) };
+    }
     // OpenCode routes each conversation by its `x-opencode-session` header, which Go requires. Only credentials() learns
     // a request's session, so the key handed to libfx carries it, and opencodeFetch moves it into the header.
     return {
@@ -184,10 +251,15 @@ export async function createProviders({ store, secretKey, durability, vercelClie
   async function list(): Promise<Provider[]> {
     const held = await secrets.has();
     return (await store.providers.list()).map((r) => {
-      const device = kinds[r.kind as Kind]?.connect === "device";
+      const entry = models.entryOf(r);
+      const device = entry.connect === "device";
       return {
         ...r,
-        kind: r.kind as Kind,
+        fields: r.fields ?? {},
+        modelIds: r.modelIds ?? [],
+        label: entry.name,
+        connect: entry.connect,
+        docs: entry.docs || null,
         hasKey: !device && held.has(r.id),
         signedIn: device && held.has(r.id),
         error: errors.get(r.id) ?? null,
@@ -195,11 +267,16 @@ export async function createProviders({ store, secretKey, durability, vercelClie
     });
   }
   const listed = async (id: string) => (await list()).find((p) => p.id === id)!;
+  // The entry a new provider is added from: the catalog's, or one of models.dev's hosts in search.
+  const entryFor = async (kind: unknown) =>
+    (typeof kind === "string" && (catalog.get(kind) ?? catalog.more(await models.modelsDev().catch(() => ({}))).find((e) => e.id === kind))) ||
+    fail(400, `kind ${String(kind)} isn't in fxbot's list of providers`);
 
-  // One device code sign-in at a time. Its object stays here: what it holds can claim the tokens.
-  let attempt: { id: string; status: SignInStatus; abort: AbortController } | undefined;
+  // One sign-in at a time. Its object stays here: what it holds can claim the tokens or the key.
+  type Attempt = { id: string; kind: string; provider?: string; way: SignIn["way"]; status: SignInStatus; abort: AbortController; verifier?: string };
+  let attempt: Attempt | undefined;
 
-  async function signedIn(kind: Kind, provider: string | undefined, credentials: object) {
+  async function signedIn(kind: string, provider: string | undefined, credentials: object) {
     if (provider) {
       const existing = await record(provider);
       await secrets.put(provider, credentials);
@@ -207,7 +284,8 @@ export async function createProviders({ store, secretKey, durability, vercelClie
       await restart(existing);
       return provider;
     }
-    const fresh: ProviderRecord = { id: newId(), kind, name: kinds[kind].label, baseUrl: null, model: "", contextWindow: null, teamId: null };
+    const entry = catalog.get(kind)!;
+    const fresh: ProviderRecord = { id: newId(), kind, name: entry.name, baseUrl: entry.baseUrl ?? null, model: "", contextWindow: null, teamId: null, fields: {}, modelIds: null };
     // An account with one team needs no choice.
     if (kind === "vercel") {
       const teams = await vercel.teams((credentials as vercel.VercelCredentials).accessToken, fetch);
@@ -220,16 +298,38 @@ export async function createProviders({ store, secretKey, durability, vercelClie
     await start(fresh);
     return fresh.id;
   }
+  // A device code: the provider's code and page, then its tokens or key once the owner enters the code.
+  function device(signIn: CatalogEntry["signIn"]): { start: () => Promise<Device | chatgpt.ChatgptDeviceSignIn>; complete: (device: any, signal: AbortSignal) => Promise<object> } {
+    if (signIn === "vercel") return { start: () => vercel.startDeviceSignIn(vercelId(), fetch), complete: (d, signal) => vercel.completeDeviceSignIn(d, vercelId(), fetch, signal) };
+    if (signIn === "huggingface") return { start: () => huggingface.start(hfId(), fetch), complete: (d, signal) => huggingface.complete(d, hfId(), fetch, signal) };
+    if (signIn === "orcarouter") return { start: () => orcarouter.start(fetch), complete: (d, signal) => orcarouter.complete(d, fetch, signal) };
+    const plan = plans[signIn as "chatgpt"];
+    return { start: () => plan.startDeviceSignIn({ fetch }), complete: (d, signal) => plan.completeDeviceSignIn(d, { fetch, signal }) };
+  }
+  // A sign-in whose app this fxbot has: Vercel's and Hugging Face's need fxbot's own, from the environment or the catalog.
+  const canSignIn = (entry: CatalogEntry) => (entry.signIn === "vercel" ? Boolean(vercelId()) : entry.signIn === "huggingface" ? Boolean(hfId()) : Boolean(entry.signIn));
+  // OpenRouter's code, from its way back or pasted, makes the key once.
+  async function finishCode(current: Attempt, code: unknown) {
+    if (current.status.status !== "waiting") return current.status;
+    if (typeof code !== "string" || !code.trim()) return fail(400, "code is required");
+    try {
+      const credentials = await openrouter.exchange(code.trim(), current.verifier!, fetch);
+      current.status = { status: "done", provider: await signedIn(current.kind, current.provider, credentials) };
+    } catch (error) {
+      current.status = { status: "failed", error: (error as Error).message };
+    }
+    return current.status;
+  }
 
   return {
     options,
-    // The agent for a bot's provider, with the model metadata libfx reads when a turn opens its engine (libfx 0.0.16,
-    // checked by hand). Vision stays on when unknown, so images are still tried.
     // The status a provider has been refusing with, if it did in the last 90 seconds.
     refusing(id: string) {
       const last = refused.get(id);
       return last && Date.now() - last.at < 90_000 ? last.status : undefined;
     },
+    // The agent for a bot's provider, with the model metadata libfx reads when a turn opens its engine (libfx 0.0.16,
+    // checked by hand). Vision stays on when unknown, so images are still tried.
     async agentFor(id: string, model: string) {
       await restarts.get(id);
       const entry = agents.get(id) ?? fail(400, errors.get(id) ?? "This bot's provider is gone. Pick another in its settings.");
@@ -247,12 +347,17 @@ export async function createProviders({ store, secretKey, durability, vercelClie
     },
     has: (id: string) => agents.has(id),
     get: record,
+    // A provider's name and its entry's, for words about it.
+    async describe(id: string) {
+      const current = await record(id);
+      return { name: current.name, label: models.entryOf(current).name };
+    },
     // Where a provider serves OpenAI's /embeddings, for memory search, with its key or its signed-in fetch.
     async embeddingsTarget(id: string): Promise<EmbeddingsTarget> {
       const current = await record(id);
       if (current.kind === "gateway") return { url: "https://ai-gateway.vercel.sh/v1/embeddings", apiKey: await keyOf(current), fetch };
       if (current.kind === "vercel") return { url: "https://ai-gateway.vercel.sh/v1/embeddings", fetch: vercelFetch(current) };
-      if (!(embeddingKinds as readonly string[]).includes(current.kind)) return fail(400, `A ${kinds[current.kind as Kind].label} serves no embeddings.`);
+      if (!(embeddingKinds as readonly string[]).includes(current.kind)) return fail(400, `${models.entryOf(current).name} serves no embeddings.`);
       return { url: `${current.baseUrl}/embeddings`, apiKey: await keyOf(current), fetch };
     },
     list,
@@ -263,28 +368,59 @@ export async function createProviders({ store, secretKey, durability, vercelClie
       await Promise.all((await store.providers.list()).map(restart));
     },
 
-    // Key and server kinds. Plans and accounts are added by signing in.
+    // What the Add provider page offers: entries whose way in this fxbot runs, a sign-in only where it has the app, and
+    // models.dev's other hosts for search.
+    async catalog(container: boolean) {
+      const providers = catalog
+        .list()
+        .filter((e) => e.connect !== "device" || canSignIn(e))
+        .map(({ clientId: _, ...e }) => (e.signIn && !canSignIn(e) ? { ...e, signIn: undefined } : e));
+      // models.dev's hosts, once it's read: a first read waits a moment at most, and the page asks again when it searches.
+      const hosts = await Promise.race([models.modelsDev().catch(() => ({})), new Promise<null>((done) => setTimeout(() => done(null), 1500).unref())]);
+      return { providers, more: hosts ? catalog.more(hosts) : [], container };
+    },
+    local: () => catalog.local(),
+
+    // Any entry but a sign-in's: a key, a server, or Vertex AI's service account. Plans and accounts are added by signing in.
     async add(input: NewProvider) {
-      const kind = input?.kind;
-      const preset = kinds[kind as Kind] ?? fail(400, `kind must be one of ${Object.keys(kinds).join(", ")}`);
-      if (preset.connect === "device") fail(400, `${preset.label} is added by signing in`);
-      const fixed = "baseUrl" in preset && preset.connect === "key" ? preset.baseUrl : undefined;
-      const baseUrl = kind === "gateway" ? null : checkBaseUrl(fixed ?? input.baseUrl ?? ("baseUrl" in preset ? preset.baseUrl : undefined));
-      const apiKey = preset.connect === "url" && kind !== "custom" ? "" : text(input.apiKey ?? "", "apiKey", 4096);
-      if (preset.connect === "key" && !apiKey) fail(400, "apiKey is required");
+      const entry = await entryFor(input?.kind);
+      const kind = entry.id;
+      if (entry.connect === "device") fail(400, `${entry.name} is added by signing in`);
+      const fields = fieldsOf(entry, input.fields);
+      const modelIds = idsOf(input.modelIds);
+      if (entry.models === "typed" && !modelIds.length) fail(400, `Type the name of at least one of your ${entry.name} models`);
+      let baseUrl: string | null = null;
+      let apiKey = "";
+      let held: Held | undefined;
+      if (entry.connect === "service-account") {
+        const serviceAccount = vertex.readServiceAccount(input.serviceAccount);
+        baseUrl = checkBaseUrl(vertex.baseUrl(serviceAccount.project_id, fields.location ?? "global"));
+        // Its check: Google makes a token from it.
+        held = { serviceAccount, ...(await vertex.token(serviceAccount, fetch)) };
+      } else if (kind !== "gateway") {
+        baseUrl = checkBaseUrl(entry.connect === "url" ? input.baseUrl || entry.baseUrl : fill(entry.baseUrl ?? fail(400, `${entry.name} has no address`), entry, fields));
+        apiKey = kind === "ollama" || kind === "lmstudio" ? "" : text(input.apiKey ?? "", "apiKey", 4096);
+        if (entry.connect === "key" && !apiKey) fail(400, "apiKey is required");
+        if (apiKey) held = { apiKey };
+      } else {
+        apiKey = text(input.apiKey ?? "", "apiKey", 4096) || fail(400, "apiKey is required");
+        held = { apiKey };
+      }
       const fresh: ProviderRecord = {
         id: newId(),
         kind,
-        name: text(input.name ?? "", "name") || preset.label,
+        name: text(input.name ?? "", "name") || entry.name,
         baseUrl,
         model: text(input.model ?? "", "model"),
-        contextWindow: preset.connect === "url" ? contextField(input.contextWindow ?? null) : null,
+        contextWindow: entry.connect === "url" ? contextField(input.contextWindow ?? null) : null,
         teamId: null,
+        fields,
+        modelIds,
       };
-      await models.check(fresh, { apiKey });
+      if (!held?.serviceAccount) await models.check(fresh, { apiKey, fetch: entryFetch(fetch, entry, async () => apiKey) });
       await store.sql.begin(async (tx) => {
         await store.providers.save(fresh, tx as unknown as Sql);
-        if (apiKey) await secrets.put(fresh.id, { apiKey }, tx as unknown as Sql);
+        if (held) await secrets.put(fresh.id, held, tx as unknown as Sql);
       });
       await start(fresh);
       return listed(fresh.id);
@@ -292,30 +428,44 @@ export async function createProviders({ store, secretKey, durability, vercelClie
 
     async update(id: string, input: ProviderUpdate) {
       const current = await record(id);
-      const preset = kinds[current.kind as Kind];
+      const entry = models.entryOf(current);
       if (!input || typeof input !== "object") fail(400, "body must be a JSON object");
-      if (input.apiKey !== undefined && preset.connect === "device") fail(400, "Sign in again to replace this provider's tokens.");
-      if (input.baseUrl !== undefined && preset.connect !== "url") fail(400, "This provider's address is fixed.");
+      if (input.apiKey !== undefined && entry.connect === "device") fail(400, "Sign in again to replace this provider's tokens.");
+      if (input.apiKey !== undefined && entry.connect === "service-account") fail(400, "Choose a new service account file to replace this provider's.");
+      if (input.serviceAccount !== undefined && entry.connect !== "service-account") fail(400, "Only Vertex AI takes a service account.");
+      if (input.baseUrl !== undefined && entry.connect !== "url") fail(400, "This provider's address is fixed.");
       const next: ProviderRecord = {
         ...current,
-        ...(input.name === undefined ? {} : { name: text(input.name, "name") || preset.label }),
+        ...(input.name === undefined ? {} : { name: text(input.name, "name") || entry.name }),
         ...(input.model === undefined ? {} : { model: text(input.model, "model") }),
         ...(input.baseUrl === undefined ? {} : { baseUrl: checkBaseUrl(input.baseUrl) }),
-        ...(input.contextWindow === undefined || preset.connect !== "url" ? {} : { contextWindow: contextField(input.contextWindow) }),
+        ...(input.modelIds === undefined ? {} : { modelIds: idsOf(input.modelIds) }),
+        ...(input.contextWindow === undefined || entry.connect !== "url" ? {} : { contextWindow: contextField(input.contextWindow) }),
         ...(input.teamId === undefined || current.kind !== "vercel" ? {} : { teamId: text(input.teamId, "teamId") }),
       };
+      if (entry.models === "typed" && !next.modelIds?.length) fail(400, `Type the name of at least one of your ${entry.name} models`);
       const apiKey = input.apiKey === undefined ? undefined : text(input.apiKey, "apiKey", 4096);
-      if (apiKey === "" && preset.connect === "key") fail(400, "apiKey is required");
-      if (apiKey !== undefined || next.baseUrl !== current.baseUrl) await models.check(next, { apiKey: apiKey ?? (await keyOf(current)) });
+      if (apiKey === "" && entry.connect === "key") fail(400, "apiKey is required");
+      let held: Held | undefined = apiKey ? { apiKey } : undefined;
+      if (input.serviceAccount !== undefined) {
+        const serviceAccount = vertex.readServiceAccount(input.serviceAccount);
+        held = { serviceAccount, ...(await vertex.token(serviceAccount, fetch)) };
+        next.baseUrl = checkBaseUrl(vertex.baseUrl(serviceAccount.project_id, current.fields?.location ?? "global"));
+      }
+      if (apiKey !== undefined || (next.baseUrl !== current.baseUrl && !held?.serviceAccount)) {
+        const key = apiKey ?? (await bearerOf(current));
+        await models.check(next, { apiKey: key, fetch: entryFetch(fetch, entry, async () => key) });
+      }
       // An agent reads a custom provider's key at each request, once it has one, so a new key needs no new agent. Closing
       // the old one would wait for its turns, which may be stuck on the key this replaces.
-      const keyed = current.kind !== "gateway" && Boolean(await keyOf(current));
+      const keyed = current.kind !== "gateway" && Boolean(await secrets.get(id));
       await store.sql.begin(async (tx) => {
         await store.providers.save(next, tx as unknown as Sql);
-        if (apiKey) await secrets.put(id, { apiKey }, tx as unknown as Sql);
+        if (held) await secrets.put(id, held, tx as unknown as Sql);
       });
-      if (apiKey !== undefined || next.baseUrl !== current.baseUrl || next.teamId !== current.teamId) await models.forget(id);
-      if ((apiKey !== undefined && !keyed) || next.baseUrl !== current.baseUrl || next.teamId !== current.teamId || next.contextWindow !== current.contextWindow) await restart(next);
+      const listChanged = held !== undefined || next.baseUrl !== current.baseUrl || next.teamId !== current.teamId || String(next.modelIds) !== String(current.modelIds);
+      if (listChanged) await models.forget(id);
+      if ((held !== undefined && !keyed) || next.baseUrl !== current.baseUrl || next.teamId !== current.teamId || next.contextWindow !== current.contextWindow) await restart(next);
       return listed(id);
     },
 
@@ -350,36 +500,51 @@ export async function createProviders({ store, secretKey, durability, vercelClie
     async teams(id: string) {
       const current = await record(id);
       if (current.kind !== "vercel") fail(400, "Only a Vercel account has teams.");
-      const { accessToken } = await renewed<vercel.VercelCredentials>(id, (old) => vercel.refresh(old, vercelClientId!, fetch));
+      const { accessToken } = await renewed<vercel.VercelCredentials>(id, (old) => vercel.refresh(old, vercelId(), fetch));
       return vercel.teams(accessToken, fetch);
     },
 
     signIns: {
-      async start({ kind, provider }: { kind: Kind; provider?: string }): Promise<SignIn> {
-        if (kinds[kind]?.connect !== "device") fail(400, "kind must be chatgpt, grok, or vercel");
-        if (kind === "vercel" && !vercelClientId) fail(400, "Set FXBOT_VERCEL_CLIENT_ID to sign in with a Vercel account.");
-        if (provider !== undefined && (await record(provider)).kind !== kind) fail(400, `provider ${provider} is not a ${kinds[kind].label}`);
+      // `origin` is the page's own, which the server checked against the address it was reached at. OpenRouter comes back
+      // to it when it can, and shows a code to paste when it can't, or when the page asks for `paste`.
+      async start({ kind, provider, way }: { kind: string; provider?: string; way?: string }, origin?: string): Promise<SignIn> {
+        const entry = (typeof kind === "string" && catalog.get(kind)) || fail(400, `kind ${String(kind)} isn't in fxbot's list of providers`);
+        if (!entry.signIn) fail(400, `${entry.name} has no sign-in`);
+        if (entry.signIn === "vercel" && !vercelId()) fail(400, "Set FXBOT_VERCEL_CLIENT_ID to sign in with a Vercel account.");
+        if (entry.signIn === "huggingface" && !hfId()) fail(400, "Set FXBOT_HF_CLIENT_ID to sign in with Hugging Face.");
+        if (provider !== undefined && (await record(provider)).kind !== kind) fail(400, `provider ${provider} is not a ${entry.name} provider`);
         if (attempt?.status.status === "waiting") {
           attempt.abort.abort();
           attempt.status = { status: "failed", error: "A newer sign-in replaced this one." };
         }
-        let device;
+        const current: Attempt = { id: newId(), kind, provider, way: "device", status: { status: "waiting" }, abort: new AbortController() };
+        const signal = current.abort.signal;
+        if (entry.signIn === "openrouter") {
+          const back = way !== "paste" && comesBack(origin) ? `${origin}/api/sign-ins/${current.id}/callback` : undefined;
+          const begun = openrouter.begin(back, current.id);
+          Object.assign(current, { verifier: begun.verifier, way: back ? "redirect" : "paste" });
+          attempt = current;
+          // OpenRouter's code is good for 10 minutes.
+          const expiresAt = Date.now() + 10 * 60_000;
+          setTimeout(() => current.status.status === "waiting" && !signal.aborted && (current.status = { status: "failed", error: "The sign-in took too long. Start again." }), expiresAt - Date.now()).unref();
+          return { id: current.id, way: current.way, url: begun.url, expiresAt };
+        }
+        const run = device(entry.signIn);
+        let started;
         try {
-          device = kind === "vercel" ? await vercel.startDeviceSignIn(vercelClientId!, fetch) : await plans[kind as "chatgpt"].startDeviceSignIn({ fetch });
+          started = await run.start();
         } catch (error) {
           return fail(502, (error as Error).message);
         }
-        const current = { id: newId(), status: { status: "waiting" } as SignInStatus, abort: new AbortController() };
         attempt = current;
-        const signal = current.abort.signal;
-        const waiting = kind === "vercel" ? vercel.completeDeviceSignIn(device as vercel.VercelDevice, vercelClientId!, fetch, signal) : plans[kind as "chatgpt"].completeDeviceSignIn(device as chatgpt.ChatgptDeviceSignIn, { fetch, signal });
-        waiting
+        run
+          .complete(started, signal)
           .then((credentials) => signedIn(kind, provider, credentials))
           .then(
             (id) => !signal.aborted && (current.status = { status: "done", provider: id }),
             (error: Error) => !signal.aborted && (current.status = { status: "failed", error: error.message }),
           );
-        return { id: current.id, verificationUrl: device.verificationUrl, userCode: device.userCode, expiresAt: device.expiresAt };
+        return { id: current.id, way: "device", verificationUrl: started.verificationUrl, userCode: started.userCode, expiresAt: started.expiresAt };
       },
       get: (id: string) => (attempt?.id === id ? attempt.status : fail(404, "sign-in not found")),
       cancel(id: string) {
@@ -388,6 +553,18 @@ export async function createProviders({ store, secretKey, durability, vercelClie
           attempt.abort.abort();
           attempt.status = { status: "failed", error: "Cancelled." };
         }
+      },
+      // OpenRouter's way back, with its code, and its state, which is the attempt's id.
+      async callback(id: string, query: URLSearchParams) {
+        if (attempt?.id !== id || attempt.way !== "redirect") return fail(404, "This sign-in isn't the one waiting. Start again from fxbot.");
+        if (query.has("state") && query.get("state") !== id) return fail(400, "This sign-in came back for another one. Start again from fxbot.");
+        if (!query.get("code")) return fail(400, "OpenRouter sent no code back. The sign-in may have been declined.");
+        return finishCode(attempt, query.get("code"));
+      },
+      // OpenRouter's code, pasted from its page.
+      async code(id: string, code: unknown) {
+        if (attempt?.id !== id || !attempt.verifier) return fail(404, "sign-in not found");
+        return finishCode(attempt, code);
       },
     },
 

@@ -22,6 +22,7 @@ const fxbot = await createFxbot({
   databaseUrl,
   secretKey: readFileSync(keyFile, "utf8"),
   vercelClientId: process.env.FXBOT_VERCEL_CLIENT_ID || undefined,
+  hfClientId: process.env.FXBOT_HF_CLIENT_ID || undefined,
   dataDir: process.env.FXBOT_DATA,
   backupsDir: process.env.FXBOT_BACKUPS,
   version,
@@ -94,21 +95,22 @@ async function body<T>(req: IncomingMessage, limit = 1 << 20): Promise<T> {
   return fail(400, "body must be a JSON object");
 }
 
-// Where a browser lands after signing in to an MCP server. The message can carry the server's own words, so it is
-// escaped, and the page runs nothing.
-async function signedIn(res: ServerResponse, query: URLSearchParams) {
+// Where a browser lands after signing in, to an MCP server or to a provider. The message can carry the server's own
+// words, so it is escaped, and the page runs nothing.
+async function cameBack(res: ServerResponse, finish: () => Promise<{ status: string; error?: string }>, done = "Signed in. You can close this tab, and go back to fxbot.") {
   let message: string;
   try {
-    const { status, error } = await fxbot.oauth.callback(query);
-    message = status === "done" ? "Connected. You can close this tab." : `Sign-in failed: ${error}`;
+    const { status, error } = await finish();
+    message = status === "done" ? done : `Sign-in failed: ${error}`;
   } catch (error) {
     message = `Sign-in failed: ${(error as Error).message}`;
   }
   const text = message.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   res
-    .writeHead(message.startsWith("Connected") ? 200 : 400, { "content-type": "text/html; charset=utf-8", "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'", "cache-control": "no-store" })
+    .writeHead(message === done ? 200 : 400, { "content-type": "text/html; charset=utf-8", "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'", "cache-control": "no-store", "referrer-policy": "no-referrer" })
     .end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>fxbot</title><p style="font:16px system-ui;margin:2rem">${text}</p>`);
 }
+const signedIn = (res: ServerResponse, query: URLSearchParams) => cameBack(res, () => fxbot.oauth.callback(query), "Connected. You can close this tab.");
 
 // A plugin's own route: the request as a web Request, and its Response streamed back. A closed connection aborts the
 // request's signal and cancels the response's body.
@@ -211,6 +213,8 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL) {
   }
   if (resource === "providers" && extra === undefined) {
     if (!id && method === "GET") return json(res, 200, await fxbot.providers.list());
+    if (id === "catalog" && !action && method === "GET") return json(res, 200, await fxbot.providers.catalog());
+    if (id === "local" && !action && method === "GET") return json(res, 200, await fxbot.providers.local());
     if (!id && method === "POST") return json(res, 201, await fxbot.providers.add(await body(req)));
     if (id && !action && method === "PATCH") return json(res, 200, await fxbot.providers.update(id, await body(req)));
     if (id && !action && method === "DELETE") return json(res, 200, (await fxbot.providers.remove(id), ok));
@@ -218,10 +222,13 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL) {
     if (id && action === "teams" && method === "GET") return json(res, 200, await fxbot.providers.teams(id));
     return fail(404, "not found");
   }
-  if (resource === "sign-ins" && !action) {
-    if (!id && method === "POST") return json(res, 201, await fxbot.signIns.start(await body(req)));
-    if (id && method === "GET") return json(res, 200, fxbot.signIns.get(id));
-    if (id && method === "DELETE") return json(res, 200, (fxbot.signIns.cancel(id), ok));
+  if (resource === "sign-ins" && !extra) {
+    // The checked origin is where a sign-in that redirects comes back to.
+    if (!id && !action && method === "POST") return json(res, 201, await fxbot.signIns.start(await body(req), req.headers.origin));
+    if (id && !action && method === "GET") return json(res, 200, fxbot.signIns.get(id));
+    if (id && !action && method === "DELETE") return json(res, 200, (fxbot.signIns.cancel(id), ok));
+    if (id && action === "callback" && method === "GET") return cameBack(res, () => fxbot.signIns.callback(id, url.searchParams));
+    if (id && action === "code" && method === "POST") return json(res, 200, await fxbot.signIns.code(id, (await body<{ code?: unknown }>(req)).code));
     return fail(404, "not found");
   }
   if (resource === "library" && extra === undefined) {

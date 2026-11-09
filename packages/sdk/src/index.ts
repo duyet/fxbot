@@ -7,6 +7,7 @@ import { createMcp } from "./mcp.ts";
 import { createMemories } from "./memories.ts";
 import type { PluginMachine } from "./plugin-api.ts";
 import { createPlugins } from "./plugins.ts";
+import { createCatalog } from "./catalog.ts";
 import { createProviders } from "./providers.ts";
 import { createRegistry } from "./registry.ts";
 import { createReleases } from "./releases.ts";
@@ -14,7 +15,7 @@ import { openSessions } from "./sessions.ts";
 import { readKey } from "./secrets.ts";
 import { createSkills } from "./skills.ts";
 import { createStore, isId, type StoredProfile } from "./store.ts";
-import { colors, faces, heads, maxPinned, moods, outfits, shapes, tints, type BotSkill, type Plugin, type PluginRef, type RepoRef, type PluginSecrets, type Fields, type Kind, type LibraryQuery, type Message, type NewProvider, type Profile, type ProfileUpdate, type ProviderUpdate, type Settings, type StreamLine, embeddingKinds, type SkillRef, type Upload } from "./types.ts";
+import { colors, faces, heads, maxPinned, moods, outfits, shapes, tints, type BotSkill, type Plugin, type PluginRef, type RepoRef, type PluginSecrets, type Fields, type LibraryQuery, type Message, type NewProvider, type Profile, type ProfileUpdate, type ProviderUpdate, type Settings, type StreamLine, embeddingKinds, type SkillRef, type Upload } from "./types.ts";
 
 export type * from "./types.ts";
 export type * from "./plugin-api.ts";
@@ -27,8 +28,10 @@ export type FxbotOptions = {
   databaseUrl: string;
   /** 32 bytes that seal the keys and tokens: a Buffer, or the base64 text of the key file. */
   secretKey: Buffer | string;
-  /** fxbot's Vercel OAuth app, for signing in with a Vercel account. */
+  /** fxbot's Vercel OAuth app, for signing in with a Vercel account, in place of the one the providers list names. */
   vercelClientId?: string;
+  /** fxbot's Hugging Face OAuth app, a public one with no secret, in place of the one the providers list names. */
+  hfClientId?: string;
   /** Plugins' files, and libfx's sessions from before 0.4.0, which move into Postgres on the first start. Default `data`. */
   dataDir?: string;
   /** Where a backup goes before migrations run: the database and `dataDir`. Default `backups`. */
@@ -47,7 +50,7 @@ export type FxbotOptions = {
   registryUrl?: string;
   /** The official MCP registry, searched only when asked to search everything. Default `https://registry.modelcontextprotocol.io`. */
   everythingUrl?: string;
-  /** The site that publishes fxbot's own lists, `mcp-registry.json` and `skills-registry.json`, read hourly. Default fxbot's, `https://fxbot.sh`. Until a read succeeds, the lists this release shipped with. */
+  /** The site that publishes fxbot's own lists, `mcp-registry.json`, `skills-registry.json`, `plugins-registry.json`, and `providers-registry.json`, read hourly. Default fxbot's, `https://fxbot.sh`. Until a read succeeds, the lists this release shipped with. */
   listsUrl?: string;
   /** Mirror the registry at start and hourly. Default true; checks turn it off and sync by hand. */
   syncRegistry?: boolean;
@@ -264,7 +267,8 @@ export async function createFxbot(options: FxbotOptions) {
   // its own word, and a read can carry data out in its query.
   const toolsNow = async () =>
     [...[history.tool, ...memories.tools, ...library.tools, ...(skills.any() ? [skills.tool] : [])].map((tool) => packages.wrap(tool, true)), ...(await mcp.tools()).map((tool) => packages.wrap(tool)), ...packages.tools()].map(keepAnswer);
-  const providers = await createProviders({ store, secretKey: key, durability: sessions.durability, vercelClientId, fetch, tools: await toolsNow() });
+  const catalog = createCatalog({ url: `${lists}/providers-registry.json`, fetch, sync: options.syncRegistry !== false });
+  const providers = await createProviders({ store, secretKey: key, durability: sessions.durability, vercelClientId, hfClientId: options.hfClientId, catalog, fetch, tools: await toolsNow() });
   // Vectors that rows lack, from where Settings says, in the background.
   embeddings.nudge();
   let retooling = Promise.resolve();
@@ -465,6 +469,9 @@ export async function createFxbot(options: FxbotOptions) {
       cancelled = end.stopReason === "cancelled";
       if (cancelled && turn.messageId) failed = stuck.get(turn.messageId);
       if (end.stopReason === "error" || end.stopReason === "refused") failed = ("error" in end && end.error?.message) || reply.trim() || `The turn ended as ${end.stopReason}.`;
+      // A provider that refused the key, as libfx ends a turn on a 401 with no words of its own, says which, and what to do.
+      const status = end.stopReason === "refused" ? providers.refusing(provider) : undefined;
+      if (turn.messageId && (status === 401 || status === 403 || keyRefused.test(failed ?? ""))) refusedKey.set(turn.messageId, (failed = await keyWords(provider)));
     } catch (error) {
       if (mine && turn.messageId) packages.observe("turn.end", { bot: id, session: sessionId, messageId: turn.messageId, ...heard(sent), reply, error: (error as Error).message });
       return;
@@ -489,14 +496,33 @@ export async function createFxbot(options: FxbotOptions) {
 
   // libfx's turn_start carries a prompt only when it was plain text, so the saved one goes back in, with the plugin
   // that sent it, if one did.
+  const keyRefused = /authentication failed[^"]*\b40[13]\b/i;
+  // The turns that ended on a refused key, by message, as this process saw them. A turn's last line can stream out before
+  // its end is kept, so a line that ends a turn as refused asks the bot's provider what it last refused with.
+  const refusedKey = new Map<string, string>();
+  async function refusedNow(line: StreamLine, bot: string) {
+    const said = keyRefused.test(line.error?.message ?? "");
+    if (line.stopReason !== "refused" && !said) return undefined;
+    const provider = (await store.profiles.get(bot))?.provider ?? "";
+    const status = providers.refusing(provider);
+    return said || status === 401 || status === 403 ? keyWords(provider) : undefined;
+  }
+  async function keyWords(provider: string) {
+    const named = provider ? await providers.describe(provider).catch(() => null) : null;
+    return `${named?.label ?? "The provider"} rejected ${named && named.name !== named.label ? `${named.name}'s` : "this provider's"} key. Replace it in Settings › Providers.`;
+  }
   const byPlugin = new Set((await store.sent.byPlugins()).map((row) => `${row.profileId}:${row.messageId}`));
   function withSent(id: string) {
     let rest = "";
     const fill = async (part: string) => {
-      const line: StreamLine | null = part.includes('"turn_start"') || part.includes('"user_message"') || (stuck.size && part.includes('"turn_end"')) ? JSON.parse(part) : null;
+      const line: StreamLine | null =
+        part.includes('"turn_start"') || part.includes('"user_message"') || (part.includes('"turn_end"') && (stuck.size || refusedKey.size || part.includes('"refused"') || keyRefused.test(part))) ? JSON.parse(part) : null;
       // A turn fxbot ended, for a provider that kept refusing, says so.
       const why = line?.type === "turn_end" && stuck.get(line.messageId!);
       if (why) return JSON.stringify({ ...line, error: { name: "Error", message: why } }) + "\n";
+      // A key the provider refused says which provider, and what to do.
+      const refusal = line?.type === "turn_end" && (refusedKey.get(line.messageId!) ?? (await refusedNow(line, id)));
+      if (refusal) return JSON.stringify({ ...line, error: { ...line?.error, message: refusal } }) + "\n";
       // A message that joined a turn has a line of its own, named by `id`.
       if (line?.type === "user_message") {
         const joined = line.id ? await store.sent.get(id, line.id) : null;
@@ -887,12 +913,19 @@ export async function createFxbot(options: FxbotOptions) {
       remove: (id: string) => providers.remove(id, () => stopTurns((turn) => turn.provider === id)),
       models: (id: string) => providers.models(id),
       teams: (id: string) => providers.teams(id),
+      // What the Add provider page offers, and whether fxbot runs in a container, where localhost is its own.
+      catalog: () => providers.catalog(Boolean(options.machine)),
+      // The local servers that answer at their usual address on this machine.
+      local: () => providers.local(),
     },
 
     signIns: {
-      start: (input: { kind: Kind; provider?: string }) => providers.signIns.start(input ?? {}),
+      // `origin` is the page's, checked against the address the server was reached at, for a sign-in that comes back to it.
+      start: (input: { kind: string; provider?: string; way?: string }, origin?: string) => providers.signIns.start(input ?? {}, origin),
       get: (id: string) => providers.signIns.get(id),
       cancel: (id: string) => providers.signIns.cancel(id),
+      callback: (id: string, query: URLSearchParams) => providers.signIns.callback(id, query),
+      code: (id: string, code: unknown) => providers.signIns.code(id, code),
     },
 
     // Resolves once libfx has stored the prompt; the reply arrives on the stream.

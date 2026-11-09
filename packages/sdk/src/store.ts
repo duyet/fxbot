@@ -7,7 +7,17 @@ export const isId = (id: string) => /^[0-9a-f]{12}$/.test(id);
 export const newId = () => randomBytes(6).toString("hex");
 
 export type Sql = postgres.Sql;
-export type ProviderRecord = { id: string; kind: string; name: string; baseUrl: string | null; model: string; contextWindow: number | null; teamId: string | null };
+export type ProviderRecord = {
+  id: string;
+  kind: string;
+  name: string;
+  baseUrl: string | null;
+  model: string;
+  contextWindow: number | null;
+  teamId: string | null;
+  fields: Record<string, string>;
+  modelIds: string[] | null;
+};
 export type PluginRecord<Config = unknown> = {
   id: string;
   kind: string;
@@ -92,12 +102,13 @@ export async function createStore({ databaseUrl, dataDir, backupsDir }: MigrateO
       },
     },
     providers: {
-      list: async () => sql<ProviderRecord[]>`select id, kind, name, base_url, model, context_window, team_id from providers order by created_at, id`,
-      get: async (id: string) => one(await sql<ProviderRecord[]>`select id, kind, name, base_url, model, context_window, team_id from providers where id = ${id}`),
+      list: async () => sql<ProviderRecord[]>`select id, kind, name, base_url, model, context_window, team_id, fields, model_ids from providers order by created_at, id`,
+      get: async (id: string) => one(await sql<ProviderRecord[]>`select id, kind, name, base_url, model, context_window, team_id, fields, model_ids from providers where id = ${id}`),
       save: async (record: ProviderRecord, tx: Sql = sql) => {
-        await tx`insert into providers ${tx(record, "id", "kind", "name", "baseUrl", "model", "contextWindow", "teamId")}
+        await tx`insert into providers (id, kind, name, base_url, model, context_window, team_id, fields, model_ids)
+          values (${record.id}, ${record.kind}, ${record.name}, ${record.baseUrl}, ${record.model}, ${record.contextWindow}, ${record.teamId}, ${tx.json(record.fields ?? {})}, ${record.modelIds?.length ? tx.array(record.modelIds) : null})
           on conflict (id) do update set kind = excluded.kind, name = excluded.name, base_url = excluded.base_url, model = excluded.model,
-          context_window = excluded.context_window, team_id = excluded.team_id`;
+          context_window = excluded.context_window, team_id = excluded.team_id, fields = excluded.fields, model_ids = excluded.model_ids`;
         return record;
       },
       remove: async (id: string) => void (await sql`delete from providers where id = ${id}`),

@@ -5,12 +5,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AddPlugins, PluginLine, readPack } from "./add-plugins.tsx";
 import { BotForm } from "./bot-form.tsx";
 import { client } from "./client.ts";
-import { ModelField, Providers } from "./providers.tsx";
+import { AddProvider, ModelStep } from "./add-provider.tsx";
 
 const list = "grid gap-3 rounded-xl border p-3";
 const readyProvider = async () => {
   const [settings, providers] = await Promise.all([client.settings.get(), client.providers.list()]);
-  return providers.find((provider) => provider.id === settings.defaultProvider);
+  // One added before its model was picked, as before a restart, isn't the default yet.
+  return providers.find((provider) => provider.id === settings.defaultProvider) ?? (providers.length === 1 ? providers[0] : undefined);
 };
 const later = "text-sm text-muted-foreground underline underline-offset-4";
 const Step = ({ title, about, children }: { title: string; about?: string; children: ReactNode }) => (
@@ -150,28 +151,25 @@ function Custom({ cards, pack, onAdd, onBack }: { cards: PackageCard[]; pack: Pa
   );
 }
 
-// A provider starts with no default model, and a bot can't answer without one, so Continue waits for both.
+// The page of providers, in place, with sign-ins first. A provider starts with no model, and a bot can't answer without
+// one, so its model comes next, then Continue. One added before, as before a restart, goes straight to its model.
 function FirstProvider({ onNext }: { onNext: () => void }) {
-  const [provider, setProvider] = useState<Provider>();
-  const [model, setModel] = useState("");
-  const [error, setError] = useState("");
-  const read = () => void readyProvider().then((found) => (setProvider(found), setModel(found?.model ?? "")), () => {});
-  useEffect(read, []);
-  const next = () => void client.providers.update(provider!.id, { model }).then(onNext, (e: Error) => setError(e.message));
+  const [provider, setProvider] = useState<Provider | null>();
+  useEffect(() => void readyProvider().then((found) => setProvider(found ?? null), () => setProvider(null)), []);
+  const makeDefault = (id: string) => void client.settings.update({ defaultProvider: id }).catch(() => {});
   return (
     <Step title="Connect a model" about="Your bots need a provider to think with: an account you sign in to, a key, or a model on your own machine.">
-      {provider ? (
-        <label className="grid gap-1.5 text-sm font-medium">
-          The model {provider.name} uses
-          <ModelField id="first-model" provider={provider.id} value={model} onChange={setModel} placeholder="Pick a model" />
-        </label>
+      {provider === undefined ? null : provider ? (
+        <ModelStep provider={provider} entry={null} first done="Continue" onDefault={makeDefault} onDone={onNext} />
       ) : (
-        <Providers defaultProvider="" onDefault={(id) => void client.settings.update({ defaultProvider: id }).then(read, () => {})} />
+        <AddProvider
+          first
+          done="Continue"
+          words={{ signIn: "The quickest way: sign in with an account you already have.", key: "Or use a key from a provider you pay.", local: "Or run models on your own machine." }}
+          onDefault={makeDefault}
+          onDone={onNext}
+        />
       )}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <Button className="justify-self-start" disabled={!provider || !model.trim()} onClick={next}>
-        Continue
-      </Button>
     </Step>
   );
 }

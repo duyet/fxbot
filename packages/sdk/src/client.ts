@@ -5,11 +5,12 @@ import type {
   PluginRef,
   McpSearch,
   PluginSecrets,
+  Catalog,
   Fields,
-  Kind,
   LibraryItem,
   LibraryPage,
   LibraryQuery,
+  LocalServer,
   Message,
   Model,
   NewProvider,
@@ -180,12 +181,18 @@ export function createClient({ baseUrl = "", onVersion }: ClientOptions = {}) {
       remove: (id: string) => call<{ ok: true }>(`/providers/${id}`, "DELETE"),
       models: (id: string) => call<Model[]>(`/providers/${id}/models`),
       teams: (id: string) => call<Team[]>(`/providers/${id}/teams`),
+      // What the Add provider page offers.
+      catalog: () => call<Catalog>("/providers/catalog"),
+      // The local servers that answer at their usual address on the server's machine.
+      local: () => call<LocalServer[]>("/providers/local"),
     },
-    // A device code sign-in: show the code and link, then poll until it is done or failed.
+    // A sign-in: show its link and code, or send the browser to its page, then poll until it is done or failed. `paste`
+    // asks a sign-in that can come back to this page to show a code instead, which `code` sends.
     signIns: {
-      start: (kind: Kind, provider?: string) => call<SignIn>("/sign-ins", "POST", { kind, provider }),
+      start: (kind: string, provider?: string, way?: "paste") => call<SignIn>("/sign-ins", "POST", { kind, provider, way }),
       get: (id: string) => call<SignInStatus>(`/sign-ins/${id}`),
       cancel: (id: string) => call<{ ok: true }>(`/sign-ins/${id}`, "DELETE"),
+      code: (id: string, code: string) => call<SignInStatus>(`/sign-ins/${id}/code`, "POST", { code }),
     },
     // Every bot's files, newest saved first. A file itself is read through the item's `url`.
     library: {

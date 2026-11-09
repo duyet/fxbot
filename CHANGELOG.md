@@ -4,6 +4,19 @@ Each release of fxbot, newest first. A release that adds migrations, bumps libfx
 
 ## Unreleased
 
+**Before upgrading.** Migration `0014_provider_fields` adds `fields` and `model_ids` columns to `providers`, for a provider's region or account and the models you type for it. Every provider you have carries on as it is.
+
+- **A new page for adding a provider.** **Add provider**, in **Settings** › **Providers**, opens a page with sign-ins first, then keys, clouds, and servers on your own machine, with a search over about 200 providers. First-run setup shows the same page, sign-ins first.
+- **Sign in to OpenRouter and OrcaRouter, with nothing to paste.** OpenRouter's sign-in comes back to fxbot's own page, or shows a code to paste where it can't. OrcaRouter's is a device code. Each makes a key on your account, which fxbot keeps sealed. Hugging Face signs in by device code too, once fxbot's app at Hugging Face is set.
+- **A device code shows a QR of its link,** and buttons to copy the code and the link, for an account that lives on your phone.
+- **Each key, walked through.** A card for each of 23 gateways and labs links straight to the page where its keys are made, says what to pick there, and what it costs to start, then checks the key for real. Groq, Anthropic, Google Gemini, DeepSeek, Z.ai, Qwen, Kimi, MiniMax, xAI, Mistral, Together, Fireworks, DeepInfra, Cerebras, NVIDIA, Hugging Face, and Nous Portal are new.
+- **Clouds.** Vertex AI with a service account's file, from which fxbot makes its own short-lived tokens, AWS Bedrock with an API key and a region, Azure OpenAI with a resource and its deployments, and Cloudflare Workers AI with a token and an account.
+- **More servers on your own machine.** llama.cpp, vLLM, Jan, and LiteLLM join Ollama and LM Studio, each with its usual address filled in, and one that's running is marked as found.
+- **Custom** takes any server that speaks OpenAI's Chat Completions, as Other server did, and model ids for a server that lists none.
+- **Models say what they can do.** The model list comes from the provider itself, with models.dev's context window, tool use, and images shown for each model, and a good first model filled in after you connect.
+- **The list of providers updates without a release.** fxbot reads it hourly from fxbot.sh, as it does the plugin list, so a new gateway, or a key page that moved, needs no update.
+- **A refused key says which provider, and what to do.** A key refused when you add it says the status and what it most likely means. A chat whose provider refuses its key says "Groq rejected this provider's key. Replace it in Settings › Providers.", where it said "Stopped: refused".
+- **For the SDK:** `providers.catalog()` and `providers.local()` list what the page offers, and the local servers that answer. `providers.add` takes `fields`, `serviceAccount`, and `modelIds`, and a provider's `kind` is any entry's id. A `Provider` gains `label`, `connect`, `docs`, `fields`, and `modelIds`. A `SignIn` gains `way` and `url`, and `signIns.code` finishes one that shows a code. `createFxbot` takes `hfClientId`, and the server `FXBOT_HF_CLIENT_ID`.
 - **A wrong OpenRouter key is refused when you add it.** OpenRouter's model list answers anyone, so fxbot took any key there, and the key failed only at the first message. fxbot now checks it where OpenRouter refuses a bad one.
 
 ## 0.7.0 (2026-11-09)

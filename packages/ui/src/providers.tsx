@@ -1,20 +1,22 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
-import { CheckIcon, ChevronsUpDownIcon, CopyIcon, ExternalLinkIcon, LoaderCircleIcon } from "lucide-react";
+import { CheckIcon, ChevronsUpDownIcon, LoaderCircleIcon, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from "@/components/ui/native-select";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { kinds, type Kind, type Model, type Provider, type SignIn, type Team } from "@fxbot/sdk/client";
+import type { CatalogEntry, Model, Provider, Team } from "@fxbot/sdk/client";
+import { AddProvider, ProviderCard, useCatalog } from "./add-provider.tsx";
 import { client } from "./client.ts";
 
 const label = "grid gap-1.5 text-sm font-medium";
 const hint = "font-normal text-muted-foreground";
-const groups = [
-  ["Sign in", "device"],
-  ["API key", "key"],
-  ["Server", "url"],
-] as const;
+
+// What fxbot knows a model can do, in a few words: its context window, tools, and images.
+export function aboutModel(m: Model) {
+  const tokens = m.contextWindow ? (m.contextWindow >= 1_000_000 ? `${+(m.contextWindow / 1_000_000).toFixed(1)}M` : `${Math.round(m.contextWindow / 1000)}K`) : "";
+  return [tokens && `${tokens} context`, m.supportsToolUse && "tools", m.supportsVision && "images"].filter(Boolean).join(" · ");
+}
 
 // A provider's models. The server answers with the list it kept, and fetches a fresh one behind that answer when it is
 // old, so `load` again, as when the picker opens, brings the new one. `version` starts over, as after a Vercel account
@@ -113,7 +115,7 @@ export function ModelField({ id, provider, version, value, onChange, placeholder
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">{m.id}</span>
-                  {m.name && m.name !== m.id && <span className="block truncate text-xs text-muted-foreground">{m.name}</span>}
+                  {((m.name && m.name !== m.id) || aboutModel(m)) && <span className="block truncate text-xs text-muted-foreground">{[m.name !== m.id && m.name, aboutModel(m)].filter(Boolean).join(" · ")}</span>}
                 </span>
                 {m.id === value && <CheckIcon className="size-4 shrink-0" />}
               </div>
@@ -141,18 +143,16 @@ export function ModelField({ id, provider, version, value, onChange, placeholder
   );
 }
 
-// Settings' providers: a row for each, and an Add list like eve's /login. Keys go to the server once and never back.
+// Settings' providers: a row for each, and Add provider, which opens the page of providers. Keys go to the server once
+// and never back.
 export function Providers({ defaultProvider, onDefault }: { defaultProvider: string; onDefault: (id: string) => void }) {
   const [providers, setProviders] = useState<Provider[] | null>(null);
   const [error, setError] = useState("");
-  const [adding, setAdding] = useState<{ kind: Kind; provider?: Provider } | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [again, setAgain] = useState<Provider | null>(null);
   const load = () => client.providers.list().then(setProviders, (e: Error) => setError(e.message));
   useEffect(() => void load(), []);
-  const done = (id?: string) => {
-    setAdding(null);
-    load();
-    if (id && !defaultProvider) onDefault(id);
-  };
+  const done = () => (setAdding(false), setAgain(null), load());
 
   return (
     <section className="grid gap-3" aria-label="Providers">
@@ -160,37 +160,63 @@ export function Providers({ defaultProvider, onDefault }: { defaultProvider: str
       {error && <p className="text-sm text-destructive">{error}</p>}
       {providers?.length === 0 && <p className="text-sm text-muted-foreground">No providers yet. Add one to start chatting.</p>}
       {providers?.map((p) => (
-        <ProviderRow key={p.id} provider={p} isDefault={p.id === defaultProvider} onDefault={() => onDefault(p.id)} onChange={load} onReconnect={() => setAdding({ kind: p.kind, provider: p })} />
+        <ProviderRow key={p.id} provider={p} isDefault={p.id === defaultProvider} onDefault={() => onDefault(p.id)} onChange={load} onReconnect={() => setAgain(p)} />
       ))}
-      <NativeSelect className="w-full" aria-label="Add provider" value="" onChange={(e) => e.target.value && setAdding({ kind: e.target.value as Kind })}>
-        <NativeSelectOption value="">Add provider…</NativeSelectOption>
-        {groups.map(([title, connect]) => (
-          <NativeSelectOptGroup key={connect} label={title}>
-            {(Object.keys(kinds) as Kind[])
-              .filter((kind) => kinds[kind].connect === connect)
-              .map((kind) => (
-                <NativeSelectOption key={kind} value={kind}>
-                  {kinds[kind].label}
-                </NativeSelectOption>
-              ))}
-          </NativeSelectOptGroup>
-        ))}
-      </NativeSelect>
-      {adding && kinds[adding.kind].connect === "device" ? (
-        <SignInDialog kind={adding.kind} provider={adding.provider} onDone={done} onClose={() => setAdding(null)} />
-      ) : adding ? (
-        <KeyDialog kind={adding.kind} provider={adding.provider} onDone={done} onClose={() => setAdding(null)} />
-      ) : null}
+      <Button variant="outline" className="justify-self-start" onClick={() => setAdding(true)}>
+        <PlusIcon /> Add provider
+      </Button>
+      {adding && (
+        <Sheetish title="Add a provider" description="Sign in with an account, use a key, or run models on your own machine." onClose={() => setAdding(false)}>
+          <AddProvider first={!defaultProvider} onDefault={onDefault} onDone={done} />
+        </Sheetish>
+      )}
+      {again && (
+        <Sheetish title={again.connect === "device" ? `Sign in again: ${again.name}` : `Replace key: ${again.name}`} description="The key or sign-in goes to the server, sealed, and never comes back to this page." onClose={() => setAgain(null)}>
+          <Again provider={again} onDone={done} />
+        </Sheetish>
+      )}
     </section>
   );
+}
+
+// A dialog on a computer, and the whole screen on a phone.
+function Sheetish({ title, description, onClose, children }: { title: string; description: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl max-sm:h-dvh max-sm:max-h-dvh max-sm:max-w-full max-sm:content-start max-sm:rounded-none max-sm:pt-[max(1rem,env(safe-area-inset-top))]">
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>{description}</DialogDescription>
+        {children}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Sign in again, or replace a key: the provider's own card, from its entry, or one made from what the provider says of
+// itself when the catalog no longer has it.
+function Again({ provider, onDone }: { provider: Provider; onDone: () => void }) {
+  const { catalog, error } = useCatalog();
+  if (!catalog) return error ? <p className="text-sm text-destructive">{error}</p> : <LoaderCircleIcon className="size-4 animate-spin" />;
+  const entry: CatalogEntry = [...catalog.providers, ...catalog.more].find((e) => e.id === provider.kind) ?? {
+    id: provider.kind,
+    name: provider.label,
+    about: "",
+    group: "key",
+    connect: provider.connect,
+    docs: provider.docs ?? "",
+  };
+  return <ProviderCard entry={entry} catalog={catalog} provider={provider} onConnected={onDone} />;
 }
 
 function ProviderRow({ provider: p, isDefault, onDefault, onChange, onReconnect }: { provider: Provider; isDefault: boolean; onDefault: () => void; onChange: () => void; onReconnect: () => void }) {
   const [model, setModel] = useState(p.model);
   const [context, setContext] = useState(p.contextWindow ? String(p.contextWindow) : "");
+  const [modelIds, setModelIds] = useState(p.modelIds.join(", "));
   const [teams, setTeams] = useState<Team[]>([]);
   const [status, setStatus] = useState("");
-  const connect = kinds[p.kind].connect;
+  const connect = p.connect;
+  // A provider whose models are typed, as Azure's deployments, or a custom server, edits its ids here.
+  const typed = p.modelIds.length > 0 || p.kind === "custom";
   useEffect(() => {
     if (p.kind === "vercel" && p.signedIn) client.providers.teams(p.id).then(setTeams, (e: Error) => setStatus(e.message));
   }, [p.id]);
@@ -207,11 +233,12 @@ function ProviderRow({ provider: p, isDefault, onDefault, onChange, onReconnect 
   }
   const save = (event: FormEvent) => {
     event.preventDefault();
-    run(() => client.providers.update(p.id, { model, ...(connect === "url" ? { contextWindow: context ? Number(context) : null } : {}) }));
+    const ids = modelIds.split(/[\n,]/).map((id) => id.trim()).filter(Boolean);
+    run(() => client.providers.update(p.id, { model, ...(connect === "url" ? { contextWindow: context ? Number(context) : null } : {}), ...(typed ? { modelIds: ids } : {}) }));
   };
   // Local servers need no key, so they show no key state.
   const state = p.error ?? (p.signedIn ? "Signed in" : p.hasKey ? "Key saved" : connect === "device" ? "Not signed in" : p.kind === "custom" ? "No key" : "");
-  const about = p.name === kinds[p.kind].label ? "" : kinds[p.kind].label;
+  const about = p.name === p.label ? "" : p.label;
 
   return (
     <form onSubmit={save} className="grid gap-3 rounded-xl border p-3" aria-label={p.name}>
@@ -224,8 +251,14 @@ function ProviderRow({ provider: p, isDefault, onDefault, onChange, onReconnect 
       {p.baseUrl && <span className="truncate text-sm text-muted-foreground">{p.baseUrl}</span>}
       <label className={label}>
         Default model
-        <ModelField id={p.id} provider={p.id} version={p.teamId ?? ""} value={model} onChange={setModel} placeholder="A model this provider serves" />
+        <ModelField id={p.id} provider={p.id} version={`${p.teamId ?? ""}:${p.modelIds.join(",")}`} value={model} onChange={setModel} placeholder="A model this provider serves" />
       </label>
+      {typed && (
+        <label className={label}>
+          {p.kind === "custom" ? "Model ids, if the server lists none" : "Deployments"}
+          <Input value={modelIds} onChange={(e) => setModelIds(e.target.value)} placeholder="One or more, with commas between" />
+        </label>
+      )}
       {connect === "url" && (
         <label className={label}>
           Context window
@@ -255,9 +288,9 @@ function ProviderRow({ provider: p, isDefault, onDefault, onChange, onReconnect 
             Make default
           </Button>
         )}
-        {(connect === "device" || connect === "key" || p.kind === "custom") && (
+        {(connect === "device" || connect === "key" || connect === "service-account" || (connect === "url" && p.kind !== "ollama" && p.kind !== "lmstudio")) && (
           <Button type="button" size="sm" variant="outline" onClick={onReconnect}>
-            {connect === "device" ? "Sign in again" : "Replace key"}
+            {connect === "device" ? "Sign in again" : connect === "service-account" ? "Replace service account" : "Replace key"}
           </Button>
         )}
         <Button type="button" size="sm" variant="destructive" onClick={() => confirm(`Remove ${p.name}? Its key or sign-in is deleted.`) && run(() => client.providers.remove(p.id), "Removed.")}>
@@ -266,155 +299,5 @@ function ProviderRow({ provider: p, isDefault, onDefault, onChange, onReconnect 
       </div>
       {status && <p className="text-sm text-muted-foreground">{status}</p>}
     </form>
-  );
-}
-
-function Frame({ title, description, onClose, children }: { title: string; description: string; onClose: () => void; children: ReactNode }) {
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
-        {children}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// A device code sign-in: the server holds what claims the tokens; the page shows the code and checks every 3 seconds.
-function SignInDialog({ kind, provider, onDone, onClose }: { kind: Kind; provider?: Provider; onDone: (id: string) => void; onClose: () => void }) {
-  const [signIn, setSignIn] = useState<SignIn | null>(null);
-  const [error, setError] = useState("");
-  const [now, setNow] = useState(Date.now());
-  const [copied, setCopied] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let stopped = false;
-    let current: SignIn | null = null;
-    setError("");
-    setSignIn(null);
-    client.signIns.start(kind, provider?.id).then(
-      (started) => {
-        if (stopped) return void client.signIns.cancel(started.id).catch(() => {});
-        current = started;
-        setSignIn(started);
-      },
-      (e: Error) => setError(e.message),
-    );
-    const poll = setInterval(async () => {
-      if (!current) return;
-      const status = await client.signIns.get(current.id).catch(() => null);
-      if (status?.status === "done") onDone(status.provider!);
-      if (status?.status === "failed") (setError(status.error ?? "The sign-in failed."), (current = null));
-    }, 3000);
-    const tick = setInterval(() => setNow(Date.now()), 1000);
-    return () => {
-      stopped = true;
-      clearInterval(poll);
-      clearInterval(tick);
-      if (current) client.signIns.cancel(current.id).catch(() => {});
-    };
-  }, [kind, attempt]);
-
-  const left = signIn ? Math.max(0, Math.round((signIn.expiresAt - now) / 1000)) : 0;
-  const copy = () => signIn && navigator.clipboard.writeText(signIn.userCode).then(() => (setCopied(true), setTimeout(() => setCopied(false), 2000)));
-  return (
-    <Frame title={`Sign in: ${kinds[kind].label}`} description="Open the link on any device, sign in, and enter this code. This page finishes on its own." onClose={onClose}>
-      {error ? (
-        <div className="grid gap-3">
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-          <Button onClick={() => setAttempt((n) => n + 1)}>Try again</Button>
-        </div>
-      ) : !signIn ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <LoaderCircleIcon className="size-4 animate-spin" /> Getting a code…
-        </p>
-      ) : (
-        <div className="grid gap-4">
-          <div className="flex items-center justify-center gap-2">
-            <code aria-label="Sign-in code" className="rounded-lg bg-muted px-4 py-2 font-mono text-2xl tracking-widest">
-              {signIn.userCode}
-            </code>
-            <Button variant="ghost" size="icon" aria-label="Copy code" onClick={copy}>
-              {copied ? <CheckIcon /> : <CopyIcon />}
-            </Button>
-          </div>
-          <a href={signIn.verificationUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 text-sm font-medium underline underline-offset-4">
-            Open {new URL(signIn.verificationUrl).host} <ExternalLinkIcon className="size-4" />
-          </a>
-          <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <LoaderCircleIcon className="size-4 animate-spin" /> Waiting · {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")} left
-          </p>
-        </div>
-      )}
-    </Frame>
-  );
-}
-
-// A key or a server's address. Replacing a key on an existing provider asks for the key alone.
-function KeyDialog({ kind, provider, onDone, onClose }: { kind: Kind; provider?: Provider; onDone: (id: string) => void; onClose: () => void }) {
-  const preset = kinds[kind];
-  const [name, setName] = useState("");
-  const [baseUrl, setBaseUrl] = useState("baseUrl" in preset ? preset.baseUrl : "");
-  const [apiKey, setApiKey] = useState("");
-  const [context, setContext] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const wantsKey = preset.connect === "key" || kind === "custom";
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      const saved = provider
-        ? await client.providers.update(provider.id, { apiKey })
-        : await client.providers.add({ kind, name, apiKey, ...(preset.connect === "url" ? { baseUrl, contextWindow: context ? Number(context) : null } : {}) });
-      setApiKey("");
-      onDone(saved.id);
-    } catch (e) {
-      setError((e as Error).message);
-      setBusy(false);
-    }
-  }
-  return (
-    <Frame title={provider ? `Replace key: ${provider.name}` : `Add ${preset.label}`} description="The key goes to the server, sealed, and never comes back to this page." onClose={onClose}>
-      <form onSubmit={save} className="grid gap-4">
-        {!provider && (
-          <label className={label}>
-            Name
-            <Input maxLength={200} value={name} onChange={(e) => setName(e.target.value)} placeholder={preset.label} />
-          </label>
-        )}
-        {!provider && preset.connect === "url" && (
-          <label className={label}>
-            Address
-            <Input required value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://host/v1" />
-            <span className={hint}>An OpenAI-compatible API with its /v1. HTTPS, or HTTP on localhost.</span>
-          </label>
-        )}
-        {wantsKey && (
-          <label className={label}>
-            API key
-            <Input type="password" autoComplete="off" required={preset.connect === "key" || !!provider} value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-          </label>
-        )}
-        {!provider && preset.connect === "url" && (
-          <label className={label}>
-            Context window
-            <Input inputMode="numeric" value={context} onChange={(e) => setContext(e.target.value.replace(/\D/g, ""))} placeholder="As the server reports" />
-          </label>
-        )}
-        {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        )}
-        <Button type="submit" disabled={busy}>
-          {busy ? "Checking…" : "Save"}
-        </Button>
-      </form>
-    </Frame>
   );
 }

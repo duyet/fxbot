@@ -110,7 +110,9 @@ export type LibraryItem = {
 export type LibraryQuery = { q?: string; profileId?: string; sessionId?: string; kind?: ItemKind; before?: string; limit?: number };
 export type LibraryPage = { items: LibraryItem[]; next: string | null };
 
-// How each kind of provider connects: a device code sign-in, an API key at a fixed address, or a server's address.
+// The kinds fxbot has had since 0.2.0, each with how it connects: a device code sign-in, an API key at a fixed address,
+// or a server's address. Every provider the Add provider page offers, these among them, is in the catalog
+// (`CatalogEntry`), and a provider's `kind` is its entry's `id`.
 export const kinds = {
   chatgpt: { label: "ChatGPT plan", connect: "device" },
   grok: { label: "Grok plan", connect: "device" },
@@ -126,13 +128,66 @@ export const kinds = {
 } as const satisfies Record<string, { label: string; connect: "device" | "key" | "url"; baseUrl?: string }>;
 export type Kind = keyof typeof kinds;
 
-// A provider as listed: never its key or tokens, only whether it holds them. `contextWindow` overrides what the
-// server reports for its models.
+// One provider the Add provider page offers, from fxbot's catalog, `providers-registry.json`: shipped with each release
+// and read hourly from fxbot.sh. `group` places it on the page, by `order`; one with no `order` shows only in search.
+// `connect` is what its card asks for, and `signIn`, when it has one this fxbot can run, leads its card and puts it in
+// the Sign in row too. `baseUrl` may name `fields`, as `{region}`, filled in when it's added. A `{apiKey}` in a header's
+// value is the provider's key. `keyCheck` is where a bad key is refused, when `/models` is public, and `badKey` the
+// statuses that mean one, 401 and 403 unless it says. `unchecked`: nothing refuses a bad key before a chat. `models`
+// says where its list comes from: its own `/models` (`own`, the default), models.dev's `modelsDev` lists (`catalog`), or
+// the ids the owner types (`typed`), less those `hide` matches, with `modelPrefix` before an id that has no vendor.
+// `docs` is its page in fxbot's docs, `recommended` the model filled in after connecting, and `tested` the fxbot whose
+// release checks ran it with a real key.
+export type CatalogField = { name: string; label: string; options?: { value: string; label: string }[]; default?: string; hint?: string };
+export type CatalogEntry = {
+  id: string;
+  name: string;
+  about: string;
+  group: "sign-in" | "key" | "cloud" | "local" | "custom";
+  order?: number;
+  connect: "device" | "key" | "url" | "service-account";
+  signIn?: "chatgpt" | "grok" | "vercel" | "openrouter" | "huggingface" | "orcarouter";
+  /** fxbot's own OAuth app at the provider, for a sign-in that needs one. Not a secret. */
+  clientId?: string;
+  baseUrl?: string;
+  fields?: CatalogField[];
+  keyPage?: string;
+  steps?: string[];
+  start?: string;
+  note?: string;
+  hint?: string;
+  keyCheck?: string;
+  badKey?: number[];
+  unchecked?: boolean;
+  modelsDev?: string | string[];
+  models?: "own" | "catalog" | "typed";
+  modelPrefix?: string;
+  hide?: string[];
+  headers?: Record<string, string>;
+  docs: string;
+  recommended?: string;
+  tested?: string;
+};
+// What the page offers: the catalog's entries whose way in this fxbot can run, models.dev's other OpenAI-compatible
+// hosts for search (`more`, each a key entry with its own docs), and whether fxbot runs in a container, where localhost
+// is the container's own.
+export type Catalog = { providers: CatalogEntry[]; more: CatalogEntry[]; container: boolean };
+// A local server's usual address that answered, when the page asked.
+export type LocalServer = { kind: string; baseUrl: string };
+
+// A provider as listed: never its key or tokens, only whether it holds them. `label` is its entry's name, `connect`
+// how it connects, and `docs` its page. `fields` filled in its address, and `modelIds` are the models typed for it.
+// `contextWindow` overrides what the server reports for its models.
 export type Provider = {
   id: string;
-  kind: Kind;
+  kind: string;
+  label: string;
+  connect: CatalogEntry["connect"];
+  docs: string | null;
   name: string;
   baseUrl: string | null;
+  fields: Record<string, string>;
+  modelIds: string[];
   model: string;
   contextWindow: number | null;
   teamId: string | null;
@@ -140,15 +195,27 @@ export type Provider = {
   signedIn: boolean;
   error: string | null;
 };
-export type NewProvider = { kind: Kind; name?: string; baseUrl?: string; apiKey?: string; model?: string; contextWindow?: number | null };
-export type ProviderUpdate = { name?: string; baseUrl?: string; apiKey?: string; model?: string; contextWindow?: number | null; teamId?: string };
+// `fields` fill the entry's address. `serviceAccount` is a service account's JSON, for Vertex AI, sent once like a key.
+export type NewProvider = {
+  kind: string;
+  name?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  serviceAccount?: string;
+  fields?: Record<string, string>;
+  modelIds?: string[];
+  model?: string;
+  contextWindow?: number | null;
+};
+export type ProviderUpdate = { name?: string; baseUrl?: string; apiKey?: string; serviceAccount?: string; modelIds?: string[]; model?: string; contextWindow?: number | null; teamId?: string };
 
 // What fxbot knows about a model. A field the provider does not report stays unset.
 export type Model = { id: string; name?: string; contextWindow?: number; maxOutputTokens?: number; supportsToolUse?: boolean; supportsVision?: boolean };
 export type Team = { id: string; name: string };
 
-// A device code sign-in as the page sees it: where to go and the code to enter, never what claims the tokens.
-export type SignIn = { id: string; verificationUrl: string; userCode: string; expiresAt: number };
+// A sign-in as the page sees it, never what claims the tokens. `device`: a link and a code to enter there. `redirect`: a
+// page at `url` that comes back to fxbot's own. `paste`: a page at `url` that shows a code to paste back.
+export type SignIn = { id: string; way: "device" | "redirect" | "paste"; verificationUrl?: string; userCode?: string; url?: string; expiresAt: number };
 export type SignInStatus = { status: "waiting" | "done" | "failed"; provider?: string; error?: string };
 
 // A plugin gives bots more to use: a remote MCP server, or a skill. `bots` is "all", or "each" for only the bots in
