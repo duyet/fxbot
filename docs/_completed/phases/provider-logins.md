@@ -354,7 +354,7 @@ What the build found or changed, checked against libfx 0.0.16 and the mocks:
   - Before any route outside the tailnet: a backend login with an httpOnly cookie (fx0).
 - Adding a provider makes the server fetch its base URL, which the URL rule limits to HTTPS, or HTTP on loopback.
 - Removing a provider deletes its row. Tokens are not revoked at the provider.
-- **OpenRouter's key check, fixed in 0.8.0.** OpenRouter's `/models` is public: it answered 200 with no key and with a fake one, so any key passed the check, and failed only at the first message. The check now asks `https://openrouter.ai/api/v1/key`, which answers a bad key with 401 ([providers v2](../../phases/providers-v2.md)).
+- **OpenRouter's key check, fixed in 0.8.0.** OpenRouter's `/models` is public: it answered 200 with no key and with a fake one, so any key passed the check, and failed only at the first message. The check now asks `https://openrouter.ai/api/v1/key`, which answers a bad key with 401 ([providers v2](providers-v2.md)).
 
 ### Size
 

@@ -90,7 +90,8 @@ async function main() {
     await pg.keyboard.type("/fre");
   } });
   await shoot("providers", fx, "/settings/providers", { async then(pg) {
-    await pg.getByRole("combobox", { name: "Add provider" }).selectOption({ label: "Ollama" }).catch(() => pg.getByRole("combobox", { name: "Add provider" }).selectOption({ index: 1 }));
+    await pg.getByRole("button", { name: "Add provider" }).click();
+    await pg.getByRole("dialog").getByRole("region", { name: "Sign in" }).waitFor();
   } });
   await shoot("memory", fx, "/settings/memory", { main: true, height: 440 });
   await fx.stop();

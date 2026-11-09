@@ -9,7 +9,7 @@ You need:
 
 - a Debian or Ubuntu machine, or one on a distro built on them, with systemd, where you can use `sudo`
 - [Tailscale](https://tailscale.com/download) on that machine and on your phone, in the same tailnet, with [HTTPS turned on](https://tailscale.com/kb/1153/enabling-https). This tutorial uses it to reach fxbot from your phone, the recommended way; fxbot itself doesn't need it.
-- a ChatGPT plan, or an API key from OpenAI or OpenRouter
+- an account to sign in with, such as a ChatGPT plan or OpenRouter, or a key from a provider such as OpenAI or Groq
 
 ## Install fxbot
 
@@ -69,16 +69,16 @@ Tap **Set up Essentials**. fxbot adds them one by one, and moves on by itself. T
 
 ### Connect a model
 
-Choose **Add provider…**, then **ChatGPT plan**.
+fxbot lists the providers it can connect to, with sign-ins first. Tap **ChatGPT and Codex**, under **Sign in**.
 
-fxbot shows a link and a code. Open the link, sign in to ChatGPT, and enter the code. The dialog closes by itself once you have.
+fxbot shows a code, and a QR of its link. Open the link, or scan the QR with your phone, sign in to ChatGPT, and enter the code. The page moves on by itself once you have.
 
-With a key instead, choose **OpenAI key** or **OpenRouter key**, paste the key, and tap **Save**. fxbot checks the key with the provider before it keeps it.
+With a key instead, tap the provider under **Use a key**, such as **OpenAI** or **OpenRouter**. Its card links to the page where its keys are made. Paste the key, and tap **Add**. fxbot checks the key with the provider before it keeps it.
 
 Then pick the model your bots use, and tap **Continue**.
 
-<img class="shot dark:sl-hidden" src="/shots/setup-provider-desktop-light.png" width="1280" height="800" alt="First-run setup, on Connect a model, with Add provider" />
-<img class="shot light:sl-hidden" src="/shots/setup-provider-desktop-dark.png" width="1280" height="800" alt="First-run setup, on Connect a model, with Add provider" />
+<img class="shot dark:sl-hidden" src="/shots/setup-provider-desktop-light.png" width="1280" height="800" alt="First-run setup, on Connect a model, with sign-ins first" />
+<img class="shot light:sl-hidden" src="/shots/setup-provider-desktop-dark.png" width="1280" height="800" alt="First-run setup, on Connect a model, with sign-ins first" />
 
 ### Make a bot
 

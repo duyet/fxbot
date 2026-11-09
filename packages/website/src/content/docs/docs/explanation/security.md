@@ -23,7 +23,7 @@ The key is a file, `/etc/fxbot/secret.key` in a release install, that only the s
 
 ## Nothing secret on the page
 
-The page sends a key once, and never gets it back: a provider in a list says only whether it has a key or a sign-in. Device code and OAuth sign-ins run on the server, as attempts the page checks on. The page sees a link and a code, and never a verifier or a token.
+The page sends a key, or Vertex AI's service account file, once, and never gets it back: a provider in a list says only whether it has a key or a sign-in. Device code and OAuth sign-ins run on the server, as attempts the page checks on. The page sees a link and a code, and never a verifier or a token. OpenRouter's sign-in comes back to fxbot's own address, where the server trades the code for a key with a verifier only it holds.
 
 The page's code carries no credentials, and its build reads no `.env`.
 

@@ -90,11 +90,14 @@ Each call is one route of the [HTTP API](/sdk/reference/http-api/). They mirror 
 | `providers.remove(id)` | `DELETE /api/providers/<id>` | `{ ok: true }` |
 | `providers.models(id)` | `GET /api/providers/<id>/models` | `Model[]` |
 | `providers.teams(id)` | `GET /api/providers/<id>/teams` | `Team[]` |
-| `signIns.start(kind, provider?)` | `POST /api/sign-ins` | `SignIn` |
+| `providers.catalog()` | `GET /api/providers/catalog` | `Catalog` |
+| `providers.local()` | `GET /api/providers/local` | `LocalServer[]` |
+| `signIns.start(kind, provider?, way?)` | `POST /api/sign-ins` | `SignIn` |
 | `signIns.get(id)` | `GET /api/sign-ins/<id>` | `SignInStatus` |
+| `signIns.code(id, code)` | `POST /api/sign-ins/<id>/code` | `SignInStatus` |
 | `signIns.cancel(id)` | `DELETE /api/sign-ins/<id>` | `{ ok: true }` |
 
-A device code sign-in: show `userCode` and `verificationUrl`, then call `signIns.get` until the status is `done` or `failed`.
+A sign-in: for a `device` one, show `userCode` and `verificationUrl`; for `redirect`, open `url`, which comes back to the page's own address; for `paste`, open `url`, and send the code it shows with `signIns.code`. Then call `signIns.get` until the status is `done` or `failed`. `way: "paste"` asks OpenRouter for a code even where it could come back.
 
 ### Library
 

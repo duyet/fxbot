@@ -96,21 +96,27 @@ A plugin's id is 12 hex characters, and anything else after `/api/plugins/` is a
 | Method | Path | Body or query | Answer |
 | --- | --- | --- | --- |
 | `GET` | `/api/providers` | | `Provider[]` |
-| `POST` | `/api/providers` | `NewProvider`: `kind`, and any of `name`, `baseUrl`, `apiKey`, `model`, `contextWindow` | 201 and `Provider` |
-| `PATCH` | `/api/providers/<id>` | Any of `name`, `baseUrl`, `apiKey`, `model`, `contextWindow`, `teamId` | `Provider` |
+| `POST` | `/api/providers` | `NewProvider`: `kind`, an entry's id, and any of `name`, `baseUrl`, `apiKey`, `serviceAccount`, `fields`, `modelIds`, `model`, `contextWindow` | 201 and `Provider` |
+| `PATCH` | `/api/providers/<id>` | Any of `name`, `baseUrl`, `apiKey`, `serviceAccount`, `modelIds`, `model`, `contextWindow`, `teamId` | `Provider` |
 | `DELETE` | `/api/providers/<id>` | | `{ "ok": true }` |
 | `GET` | `/api/providers/<id>/models` | | `Model[]` |
 | `GET` | `/api/providers/<id>/teams` | | `Team[]` |
+| `GET` | `/api/providers/catalog` | | `Catalog`: `{ providers, more, container }`, the entries this fxbot can run and models.dev's other hosts |
+| `GET` | `/api/providers/local` | | `LocalServer[]`: `{ kind, baseUrl }` for each local server that answered at its usual address |
 
-A key goes up in `apiKey`. No answer carries it: a `Provider` has `hasKey` and `signedIn`.
+A key goes up in `apiKey`, and Vertex AI's service account in `serviceAccount`. No answer carries either: a `Provider` has `hasKey` and `signedIn`.
 
 ## Sign-ins
 
 | Method | Path | Body or query | Answer |
 | --- | --- | --- | --- |
-| `POST` | `/api/sign-ins` | `kind`: `chatgpt`, `grok`, or `vercel`. `provider`, optional: a provider of that kind to sign in again. | 201 and `SignIn`: `{ id, verificationUrl, userCode, expiresAt }` |
+| `POST` | `/api/sign-ins` | `kind`: an entry with a sign-in, such as `chatgpt`, `grok`, `vercel`, `openrouter`, `huggingface`, or `orcarouter`. `provider`, optional: a provider of that kind to sign in again. `way`, optional: `paste`, for a code in place of a way back. | 201 and `SignIn`: `{ id, way, verificationUrl?, userCode?, url?, expiresAt }` |
 | `GET` | `/api/sign-ins/<id>` | | `SignInStatus`: `{ status, provider?, error? }`, with `status` `waiting`, `done`, or `failed` |
+| `GET` | `/api/sign-ins/<id>/callback` | `code` and `state`, from OpenRouter | A small page that says how it went |
+| `POST` | `/api/sign-ins/<id>/code` | `code`: the one OpenRouter's page showed | `SignInStatus` |
 | `DELETE` | `/api/sign-ins/<id>` | | `{ "ok": true }` |
+
+OpenRouter comes back to `/api/sign-ins/<id>/callback` on the page's own origin, which the request's `Origin` names, when that's HTTPS or on localhost.
 
 ## Library
 

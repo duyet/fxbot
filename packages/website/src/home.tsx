@@ -36,7 +36,7 @@ const features: { shape: string; color: string; title: string; link: string; bod
     color: "amber",
     title: "Providers",
     link: "/docs/how-to/add-a-provider/",
-    body: <>Sign in to a ChatGPT, Grok, or Vercel account with a device code, from any device. Or add a key for OpenAI, AI Gateway, OpenRouter, or OpenCode, or point at a local server such as Ollama or LM Studio.</>,
+    body: <>Sign in with ChatGPT, Grok, OpenRouter, and more, from any device. Or add a key from one of about 30 gateways, labs, and clouds, each walked through, or point at a local server such as Ollama or LM Studio.</>,
   },
   {
     shape: "squircle",

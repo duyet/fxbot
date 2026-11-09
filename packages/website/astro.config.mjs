@@ -34,6 +34,7 @@ function repositoryFiles() {
       "src/content/docs/docs/reference/changelog.md",
       `---\ntitle: Changelog\ndescription: ${JSON.stringify(about)}\n---\n\n${changelog.trim()}\n\nEach release is also on [GitHub Releases](${repo}/releases), with a short version of its section here.\n`,
     );
+    write("src/content/docs/docs/reference/providers.md", readFileSync(new URL("src/providers-reference.md", here), "utf8").replace("<!-- providers -->", providersTable()));
     mkdirSync(new URL("public", here), { recursive: true });
     for (const list of ["mcp-registry.json", "skills-registry.json", "plugins-registry.json", "plugin-breaks.json", "providers-registry.json"]) copyFileSync(new URL(`packages/sdk/src/${list}`, root), new URL(`public/${list}`, here));
     copyFileSync(new URL("setup.sh", root), new URL("public/setup.sh", here));
@@ -41,6 +42,34 @@ function repositoryFiles() {
     write("public/robots.txt", `User-agent: *\nAllow: /\n\nSitemap: ${site}${base}sitemap-index.xml\n`);
   };
   return { name: "fxbot-repository-files", hooks: { "astro:config:setup": setup } };
+}
+
+// The Providers reference's table: every entry in the providers list installs read, so it can't drift from what fxbot
+// offers.
+function providersTable() {
+  /** @type {any[]} */
+  const entries = JSON.parse(readFileSync(new URL("packages/sdk/src/providers-registry.json", root), "utf8")).providers;
+  const groups = ["sign-in", "key", "cloud", "local", "custom"];
+  entries.sort((a, b) => groups.indexOf(a.group) - groups.indexOf(b.group) || (a.order ?? 1e9) - (b.order ?? 1e9));
+  /** @param {string} text */
+  const code = (text) => `\`${text}\``;
+  /** @type {Record<string, string>} */
+  const ownModels = { chatgpt: "The Codex model list", grok: "Grok's model list", vercel: "AI Gateway's list", gateway: "AI Gateway's list", ollama: "The server: `/api/tags`, and `/api/show` for each model", lmstudio: "The server: `/api/v1/models`" };
+  const rows = entries.map((e) => {
+    const fields = (e.fields ?? []).map((/** @type {any} */ f) => f.label.toLowerCase());
+    const ways = [
+      e.signIn && (e.signIn === "openrouter" ? "Sign in, back to fxbot's page or with a code" : e.signIn === "vercel" ? "Sign in by device code, then a team" : "Sign in by device code"),
+      e.connect === "key" && "A key",
+      e.connect === "service-account" && "A service account's JSON key",
+      e.connect === "url" && (["ollama", "lmstudio"].includes(e.id) ? "Its address" : "Its address, and a key if it needs one"),
+    ].filter(Boolean);
+    const way = `${ways.map((w, i) => (i ? w.charAt(0).toLowerCase() + w.slice(1) : w)).join("; or ")}${fields.length ? `, with its ${fields.join(" and ")}` : ""}`;
+    const address = e.baseUrl ? code(e.baseUrl) + (e.connect === "url" ? " by default" : "") : e.connect === "url" ? "Yours" : ["vercel", "gateway"].includes(e.id) ? "AI Gateway" : e.id === "chatgpt" ? "ChatGPT's Codex API" : "Grok's API";
+    const models = ownModels[e.id] ?? (e.models === "typed" ? "The ids you type" : e.models === "catalog" ? "models.dev" : "Its own list");
+    const check = e.unchecked ? "Not before a chat" : e.keyCheck ? code(e.keyCheck) : e.connect === "service-account" ? "Google makes a token from it" : e.connect === "device" ? "No key: a sign-in" : "Its model list";
+    return `| [${e.name}](${e.docs}) | ${way} | ${address} | ${models} | ${check} |`;
+  });
+  return ["| Provider | Connects with | Address | Models from | Key checked at |", "| --- | --- | --- | --- | --- |", ...rows].join("\n");
 }
 
 // A page's links: /docs/x/ is a page of this site, under its base, and so is a full address on it, as the changelog

@@ -1,29 +1,32 @@
 ---
 title: "Providers"
-description: "The kinds of provider in Add provider\u2026, in Settings \u203a Providers. Each bot runs on one provider."
+description: "Every provider on Add provider, in Settings › Providers: how each connects, its address, where its models come from, and where its key is checked. Each bot runs on one provider."
 ---
 
-The kinds of provider in **Add provider…**, in **Settings** › **Providers**. Each bot runs on one provider.
+Every provider on **Add provider**, in **Settings** › **Providers**, and in first-run setup. Each bot runs on one provider. To add one, see [Add a provider](/docs/how-to/add-a-provider/), and each provider's own page.
 
-| Kind | Connects with | Base URL | Models from |
-| --- | --- | --- | --- |
-| ChatGPT plan | Device code | | The Codex model list |
-| Grok plan | Device code | | Grok's model list |
-| Vercel account | Device code, then a team. Needs `FXBOT_VERCEL_CLIENT_ID`. | | AI Gateway |
-| AI Gateway key | Key | | AI Gateway |
-| OpenAI key | Key | `https://api.openai.com/v1` | models.dev |
-| OpenCode Zen key | Key | `https://opencode.ai/inference/openai/v1` | models.dev, Chat Completions models only |
-| OpenCode Go key | Key | `https://opencode.ai/inference/go/openai/v1` | models.dev, Chat Completions models only |
-| OpenRouter key | Key | `https://openrouter.ai/api/v1` | models.dev |
-| Ollama | Base URL, and an optional context window | `http://localhost:11434/v1` by default | The server: `/api/tags`, and `/api/show` for each model |
-| LM Studio | Base URL, and an optional context window | `http://localhost:1234/v1` by default | The server: `/api/v1/models` |
-| Other server | Base URL, and an optional key and context window | | The server: `/models`, ids only |
+<!-- providers -->
+
+**Search** also finds about 175 more hosts from [models.dev](https://models.dev): those that speak OpenAI's Chat Completions at a fixed HTTPS address. Each takes a key, at models.dev's address for it, and its models come from its own list, or models.dev's when it has none. They haven't been tried with fxbot.
+
+## The list of providers
+
+- fxbot ships its list of providers, `providers-registry.json`, with each release, and reads it again every hour from fxbot.sh, as it does the plugin list ([`FXBOT_LISTS_URL`](/docs/reference/configuration/)). A new provider, or a key page that moved, needs no release.
+- An entry that needs something this fxbot can't do, such as a way to sign in it doesn't know, is left out.
+- A provider keeps what it needs to run when it's added: its address, its fields, and the model ids typed for it. One whose entry later leaves the list carries on.
 
 ## Keys and sign-ins
 
-- A key is checked with the provider when it is added, at its model list. It is refused when the provider answers 401 or 403, and kept on a 404, which a server with no list at `/models` gives.
+- A key is checked with the provider when it is added: where the table says, or at its model list. It is refused when the provider answers 401 or 403, or a status the entry names, such as xAI's and Gemini's 400. A 404 passes, which a server with no list at `/models` gives.
+- A provider whose list answers any key, such as NVIDIA's, can't be checked before a chat. Its card says so, and a wrong key shows at the first message.
+- A chat whose provider refuses its key with 401 says which provider, and to replace the key in **Settings** › **Providers**. A 403 says the key may lack a permission, or the account may need credit or be over its quota, since providers use it for all of those.
+- A field, such as a region or an account, fills in the provider's address. A field with options takes one of them, and any other field takes a name, with nothing that could change the address's shape.
 - A key goes to the server once and is never sent back. A provider in the list says only whether it holds a key or a sign-in.
-- A device code sign-in runs on the server. The page gets the link, the code, and when it expires.
+- A sign-in runs on the server. The page gets the link and the code, or the page to open, and when it expires.
+  - **Device code:** ChatGPT, Grok, Vercel, Hugging Face, and OrcaRouter. Open the link on any device, and enter the code.
+  - **OpenRouter** comes back to fxbot's own page when the page's address is HTTPS or on localhost. On a plain-HTTP address, or when asked, it shows a code to paste instead.
+  - **Vercel and Hugging Face** need fxbot's own app at each. Their sign-ins show when fxbot's list of providers names one, or with [`FXBOT_VERCEL_CLIENT_ID` and `FXBOT_HF_CLIENT_ID`](/docs/reference/configuration/).
+- **Vertex AI** takes a service account's JSON key. fxbot makes its own hour-long tokens from it, and a new one 5 minutes before each ends.
 - Keys and tokens are stored sealed. See the [security model](/docs/explanation/security/).
 
 A new key works from the next request, even for a turn already running. **Remove** ends whatever is still running on a provider first, in any chat, and its key stops working at once.
@@ -32,21 +35,23 @@ When a provider keeps refusing, such as with a rate limit, libfx tries again by 
 
 ## Model lists
 
+- A provider's models come from its own list, with [models.dev](https://models.dev)'s context window, tool use, and images for each model it knows: by its id, then by its id without a vendor, then by models.dev's canonical id. A model models.dev doesn't know lists without them.
+- Where the provider has no list, its models are models.dev's, as the table says. Where you typed model ids, such as Azure's deployments, those are the list.
 - fxbot keeps each provider's model list in Postgres and answers with it at once. A list older than 5 minutes is fetched again behind that answer, and a failed fetch keeps the old list.
-- A list is dropped when its source changes: a new key, address, team, or sign-in.
+- A list is dropped when its source changes: a new key, address, team, sign-in, or model ids.
 - models.dev is read at most once a day.
 - The model picker takes a model id that the list lacks.
-- A provider's **Context window**, on Ollama, LM Studio, and Other server, overrides what the server reports, for every model it serves.
+- A provider's **Context window**, on a server on your machine or **Custom**, overrides what the server reports, for every model it serves.
 
 ## Embeddings
 
 Memory search can take its vectors from a provider's embedding model, picked in **Settings** › **Memory** ([Choose where memory search's vectors come from](/docs/how-to/memory-search/)).
 
-| Kind | Embeddings from |
+| Provider | Embeddings from |
 | --- | --- |
-| OpenAI key, OpenRouter key, Ollama, LM Studio, Other server | `/embeddings` under its base URL |
-| AI Gateway key, Vercel account | `https://ai-gateway.vercel.sh/v1/embeddings`. A Vercel account is untested. |
-| ChatGPT plan, Grok plan, OpenCode Zen key, OpenCode Go key | None |
+| OpenAI, OpenRouter, Ollama, LM Studio, Custom | `/embeddings` under its address |
+| AI Gateway, Vercel | `https://ai-gateway.vercel.sh/v1/embeddings`. A Vercel account is untested. |
+| Any other | None |
 
 - The model's id is typed in, as the provider names it.
 - Picking one embeds a test string first. If that fails, the old setting stays.

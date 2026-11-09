@@ -34,17 +34,18 @@ To add the SDK to a project, see [Use the SDK in a project](/sdk/how-to/set-up/)
 | --- | --- | --- | --- |
 | `databaseUrl` | `string` | | fxbot's Postgres. Every record lives there. Keys and tokens are stored only sealed. |
 | `secretKey` | `Buffer` or `string` | | The 32 bytes that seal keys and tokens: a `Buffer`, or the base64 text of the key file. A key of another length throws. |
-| `vercelClientId` | `string` | None | fxbot's Vercel OAuth app, for signing in with a Vercel account. Without it, a Vercel sign-in fails with 400. |
+| `vercelClientId` | `string` | The list's | fxbot's Vercel OAuth app, for signing in with a Vercel account, in place of the one fxbot's list of providers names. With neither, a Vercel sign-in fails with 400. |
+| `hfClientId` | `string` | The list's | fxbot's Hugging Face OAuth app, a public one with no secret, in place of the one fxbot's list of providers names. With neither, a Hugging Face sign-in fails with 400. |
 | `dataDir` | `string` | `data` | Plugins' files, under `plugins/`. Chats from before 0.4.0, under `sessions/`, move into the database on the first start, which renames the folder `sessions.moved`. A relative path is taken from the working directory. |
 | `backupsDir` | `string` | `backups` | Where a backup goes before migrations change a database in use. |
 | `version` | `string` | `0.0.0` | The running version, for `release()`. |
 | `releasesUrl` | `string` | None | Where the newest stable release is read, in the shape of GitHub's `releases/latest`. It is read at start and once a day. Without it, nothing is asked. |
-| `fetch` | `typeof fetch` | `globalThis.fetch` | The `fetch` for fxbot's own requests: sign-ins, model lists, key checks, MCP servers, the registries, skills, embeddings, and the release check. Turns use libfx's own `fetch`, except on a Vercel account and OpenCode. |
+| `fetch` | `typeof fetch` | `globalThis.fetch` | The `fetch` for fxbot's own requests: sign-ins, model lists, key checks, MCP servers, the registries, skills, embeddings, and the release check. Turns use libfx's own `fetch`, except on a Vercel account, OpenCode, and a provider whose entry adds headers, such as OpenRouter, Anthropic, and Azure. |
 | `localUrl` | `string` | `http://127.0.0.1:8787` | The server's own origin on this machine. An MCP sign-in with a loopback redirect comes back to `<localUrl>/callback`. |
 | `clientMetadataUrl` | `string` | None | The project's published OAuth client ID metadata document, for MCP servers that sign in with one. Without it, fxbot registers itself with each server that allows it. |
 | `registryUrl` | `string` | `https://api.mcp.github.com` | The MCP registry that registry entries come from. It is mirrored into Postgres for search. |
 | `everythingUrl` | `string` | `https://registry.modelcontextprotocol.io` | The official MCP registry. It is asked only when a search asks for everything. |
-| `listsUrl` | `string` | `https://fxbot.sh` | The site that publishes fxbot's own lists, `<listsUrl>/mcp-registry.json`, `<listsUrl>/skills-registry.json`, and `<listsUrl>/plugins-registry.json`, and what each release broke, `<listsUrl>/plugin-breaks.json`. They are read hourly. Until a read succeeds, fxbot uses the lists this release shipped with. |
+| `listsUrl` | `string` | `https://fxbot.sh` | The site that publishes fxbot's own lists, `<listsUrl>/mcp-registry.json`, `<listsUrl>/skills-registry.json`, and `<listsUrl>/plugins-registry.json`, its list of providers, `<listsUrl>/providers-registry.json`, and what each release broke, `<listsUrl>/plugin-breaks.json`. They are read hourly. Until a read succeeds, fxbot uses the lists this release shipped with. |
 | `syncRegistry` | `boolean` | `true` | `false` skips the registry sync at start. In 0.3.0, the hourly sync still runs. |
 | `embedUrl` | `string` | None | The machine's local embedder, an OpenAI-style API such as `http://embed:8080/v1`, for memory search. Trailing slashes are dropped. Without it, there is no local embedder. |
 | `pluginDirs` | `string[]` | None | Plugin folders, for writing a plugin. Each is added on first sight, loaded at start, and loaded again a moment after its files change. See [Plugin API](/sdk/reference/plugin-api/#where-plugins-come-from). |
@@ -57,6 +58,7 @@ To add the SDK to a project, see [Use the SDK in a project](/sdk/how-to/set-up/)
 | `databaseUrl` | `FXBOT_DATABASE_URL` |
 | `secretKey` | The file named by `FXBOT_SECRET_KEY_FILE` |
 | `vercelClientId` | `FXBOT_VERCEL_CLIENT_ID` |
+| `hfClientId` | `FXBOT_HF_CLIENT_ID` |
 | `dataDir` | `FXBOT_DATA` |
 | `backupsDir` | `FXBOT_BACKUPS` |
 | `version` | `version` in the root `package.json` |

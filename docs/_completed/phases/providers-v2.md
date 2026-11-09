@@ -26,7 +26,7 @@ Adding a provider becomes one page that walks the owner through it, in Settings 
 - **The docs get a page for each popular provider:** how to sign in or make a key, the fields, free tiers, and quirks.
 - **A fix comes first.** OpenRouter's model list is public, so the key check fxbot runs there today passes any key.
 
-Status: planned on 2026-11-09, for 0.8.0, not built. Researched the same day:
+Status: built on 2026-11-09, for 0.8.0, and checked against stub providers: 69 checks of the SDK and 35 in a browser, all passing (section 4). Real accounts and keys are still to be tried by hand. Where the build differs from the plan, section 3 says so under **Built**. Planned and researched the same day:
 - the research directive's references
 - the logins of fx and libfx, and of other agent apps
 - the docs, sign-in endpoints, and model lists of about 60 gateways, labs, clouds, and local servers
@@ -46,7 +46,7 @@ Checked with requests here: each host's model list, with no key and with a fake 
 
 ## 0. Core or plugin
 
-**Core, by the owner's call and by CONVENTIONS** ([Core or plugin](../../CONVENTIONS.md#core-or-plugin)). A model is the first thing every bot needs, and providers have been core since [provider logins](../_completed/phases/provider-logins.md).
+**Core, by the owner's call and by CONVENTIONS** ([Core or plugin](../../../CONVENTIONS.md#core-or-plugin)). A model is the first thing every bot needs, and providers have been core since [provider logins](provider-logins.md).
 
 | Package | What it gets |
 | --- | --- |
@@ -61,7 +61,7 @@ Nothing here touches the plugin API.
 
 ### fxbot today
 
-Built in [provider logins](../_completed/phases/provider-logins.md) (0.2.0) and shown in first-run setup since [onboarding](../_completed/phases/onboarding.md) (0.7.0):
+Built in [provider logins](provider-logins.md) (0.2.0) and shown in first-run setup since [onboarding](onboarding.md) (0.7.0):
 
 - **Eleven kinds,** one `kinds` table in the SDK that the page reads (`packages/sdk/src/types.ts:114-126`). Each is a label, a way to connect, and sometimes a base URL:
   - **Sign in by device code:** ChatGPT plan, Grok plan, Vercel account.
@@ -314,7 +314,7 @@ These are libfx's behavior, not fxbot's. Each needs a real key before its provid
 
 ### The fix, first
 
-`keyCheckAt` (`packages/sdk/src/models.ts:13`) gains `openrouter: "https://openrouter.ai/api/v1/key"`, which answers a bad key with 401 (checked). It's a fix to [provider logins](../_completed/phases/provider-logins.md), recorded in that doc's **Built**, and needs no wait for the rest.
+`keyCheckAt` (`packages/sdk/src/models.ts:13`) gains `openrouter: "https://openrouter.ai/api/v1/key"`, which answers a bad key with 401 (checked). It's a fix to [provider logins](provider-logins.md), recorded in that doc's **Built**, and needs no wait for the rest.
 
 ### The catalog (`packages/sdk/src/providers-registry.json`)
 
@@ -458,7 +458,7 @@ Each runs on the server as an attempt the page polls, as today (`providers.ts:35
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Each button is its name with a mark,** drawn from the name as plugins' icons are ([plugin icons](../_completed/phases/plugin-icons.md)), so no logo is fetched or bundled.
+- **Each button is its name with a mark,** drawn from the name as plugins' icons are ([plugin icons](plugin-icons.md)), so no logo is fetched or bundled.
 - **A tap opens its card,** which is the whole of that provider:
   - **A sign-in:** **Continue to OpenRouter**, or a device code, with:
     - the code
@@ -569,59 +569,82 @@ After a provider, it asks for the model, then **Continue**, as now. A sign-in or
 
 **Size:**
 
-| Part | Lines |
-| --- | --- |
-| The catalog, about 45 entries | about 900 of JSON |
-| SDK: entries, fields, models, checks | about 250 |
-| SDK: OpenRouter, Hugging Face, OrcaRouter | about 220 |
-| SDK: Vertex, Azure, Bedrock, Cloudflare | about 120 |
-| Server routes | about 40 |
-| The page and its cards | about 450 |
-| First-run setup | about 30 |
-| The migration | 3 |
-| Docs: about 35 provider pages, and the rest | about 1,800 |
+| Part | Lines | Built |
+| --- | --- | --- |
+| The catalog, about 45 entries | about 900 of JSON | 37 entries, 540 |
+| SDK: entries, fields, models, checks | about 250 | about 620: `catalog.ts`, `models.ts`, `providers.ts`, types, store, and the chat's words for a refused key |
+| SDK: OpenRouter, Hugging Face, OrcaRouter | about 220 | 120, with a device code module the two share |
+| SDK: Vertex, Azure, Bedrock, Cloudflare | about 120 | 50: Vertex's tokens. The rest is the catalog. |
+| Server routes | about 40 | 17 |
+| The page and its cards | about 450 | 540, and `providers.tsx` shrank by 190 |
+| First-run setup | about 30 | 17 |
+| The migration | 3 | 3 |
+| Docs: about 35 provider pages, and the rest | about 1,800 | about 1,900: 34 pages of 1,620 lines, and the rest |
+
+### Built
+
+What the build found or changed, against the plan:
+
+- **An entry's way in.** `connect` is what its card asks for: `device`, `key`, `url`, or `service-account`. A `signIn` puts it in the Sign in row too, so OpenRouter, Hugging Face, and OrcaRouter are one card each, the sign-in first, then "Or use a key". There's no `redirect` connect: OpenRouter's way is chosen when it signs in. Entries gained `about`, the line on its button; `note` and `hint`, for its card; `unchecked`, for a list that answers any key; `modelPrefix`, Vertex's `google/`; and `clientId`. `modelsDev` can name more than one list, as Cloudflare's does.
+- **fxbot's own apps come from the catalog.** No Vercel or Hugging Face app is registered yet (question 1), so the shipped entries' `clientId` is empty, and those two sign-ins don't show. Once the apps exist, their ids go in fxbot.sh's `providers-registry.json`, and every install shows the buttons within the hour, with no release. `FXBOT_VERCEL_CLIENT_ID` and the new `FXBOT_HF_CLIENT_ID` override the catalog's. Hugging Face still takes a pasted token meanwhile.
+- **Hugging Face's sign-in** asks for `inference-api`, so fxbot's app there must be registered with that scope. Hugging Face's docs confirm a public app, with no secret, can use the device code; their example sends no scope, so the app's own scopes may decide. Its OpenID configuration also lists dynamic client registration, which might let each install register its own app; that wasn't tried, since it creates something at Hugging Face.
+- **Cloudflare's key check moved.** `/user/tokens/verify` checks only a user's token, and Cloudflare's account tokens would fail it. The check asks the account's Workers AI model search instead, which answered a made-up, well-formed token with 401, and a malformed one with 400 (checked), so its `badKey` is 400, 401, and 403.
+- **Vertex AI:** a location other than `global` uses that region's own host, `{location}-aiplatform.googleapis.com`. A service account that names a token endpoint other than Google's is refused, so the signed assertion goes nowhere else. Claude is hidden, as it isn't on that endpoint.
+- **A refused key in a chat.** libfx ends a turn whose provider answers 401 as `refused`, with no words, so the chat said "Stopped: refused" (checked). fxbot now words it from the provider's last refusal: "Groq rejected this provider's key. Replace it in Settings › Providers." A 403 says what it may mean instead, since Alibaba and others answer an account out of quota or credit with 403 too: "…refused this provider's key (HTTP 403): it may lack a permission, or the account may need credit or be over its quota." The turn's last line can stream out before the turn's end is kept, so the stream asks the provider too.
+- **A refusal on adding** says the status and what it most likely means: 401, "it's wrong, or it was deleted"; 403, "it may lack a permission, or the account may need credit"; 400, "it isn't a key it can read". A server that can't be reached says "The key check couldn't reach <host>.", where it said "Reaching The key check failed.".
+- **The page doesn't wait for models.dev.** Its 6 MB took a second or more on a new install's first look. The catalog's route waits for it 1.5 seconds at most, and the page asks again the first time you search.
+- **Found on this machine** is its own route, `GET /api/providers/local`, so the page shows at once. It asks all six local servers, not only Ollama and LM Studio, with half a second each.
+- **models.dev's copy** in Postgres keeps every host now, trimmed to what fxbot uses: 0.7 MB. A copy an older fxbot kept serves until the first fetch.
+- **A host's own list leaves out what models.dev knows isn't a chat model,** such as speech and embedding models.
+- **OpenAI, OpenRouter, and OpenCode keep models.dev's list,** as before, rather than their own, so nothing they listed changes.
+- **`kinds` stays** in `@fxbot/sdk/client`, as the eleven kinds since 0.2.0, so an app built on it keeps working. The page reads the catalog.
+- **The search box says "Search providers",** with no count, which changed whenever models.dev did.
+- **Bedrock's key check is optional where it can't be reached.** AWS runs `bedrock-mantle`, where the check asks, in fewer regions than the runtime, such as not in `us-west-1`. There a key was refused as unreachable, however good. An entry's `optionalCheck` keeps the key unchecked when its `keyCheck` can't be reached, and a wrong one shows at the first message.
+- **Vertex AI is now Gemini Enterprise Agent Platform,** in Google's docs: the **Agent Platform API** and the **Agent Platform User** role. The card's steps use the new names, and its address is unchanged.
+- **A recommended model matches without a host's prefix,** as Gemini's list may name its models `models/gemini-…`.
+- **Found by the provider pages' writing, not changed:** Anthropic's list comes 20 to a page, and fxbot reads the first. Anthropic wants a key scoped to a workspace, or a header fxbot doesn't send. A Gemini key refused in a chat shows Gemini's own 400, since a 400 there can be other things too. OpenCode Zen's free models work only in OpenCode's own app, so its card no longer says some are free.
 
 ## 4. Checklist
 
 **M0. The fix, at once**
-- [ ] `keyCheckAt.openrouter` is `https://openrouter.ai/api/v1/key`. A fake key is refused against a stub that answers like OpenRouter: 200 at `/models`, 401 at `/key`. Recorded in provider logins' **Built**.
+- [x] `keyCheckAt.openrouter` is `https://openrouter.ai/api/v1/key`. A fake key is refused against a stub that answers like OpenRouter: 200 at `/models`, 401 at `/key`. Recorded in provider logins' **Built**. *Checked: a fake key is refused with 401 at `/key`, and a good one passes, though `/models` answers anyone.*
 
 **M1. The catalog, and providers from it**
-- [ ] `providers-registry.json`, with its type, and its copy on the site, read hourly through `listsUrl`. An entry with a way to connect this release lacks is left out.
-- [ ] The migration, with `fields` and `model_ids`, and its note.
-- [ ] `providers.add` from an entry: fields filled into the base URL, checked; headers through `fetch`. Today's providers of every kind carry on unchanged.
-- [ ] Models: the provider's own list with models.dev's metadata, the catalog list where there's none, typed ids, and `hide`.
-- [ ] Key checks with `keyCheck` and `badKey`, and the clearer message at a chat's first refusal.
-- [ ] Checked against stub hosts:
+- [x] `providers-registry.json`, with its type, and its copy on the site, read hourly through `listsUrl`. An entry with a way to connect this release lacks is left out.
+- [x] The migration, with `fields` and `model_ids`, and its note.
+- [x] `providers.add` from an entry: fields filled into the base URL, checked; headers through `fetch`. Today's providers of every kind carry on unchanged.
+- [x] Models: the provider's own list with models.dev's metadata, the catalog list where there's none, typed ids, and `hide`.
+- [x] Key checks with `keyCheck` and `badKey`, and the clearer message at a chat's first refusal.
+- [x] Checked against stub hosts:
   - a public `/models`, and a 401 at `keyCheck`
   - a 400 for a bad key
   - no list, so the catalog's
   - a field in the base URL
   - a header
-- [ ] `npm run typecheck`, and `git diff --check`.
+- [x] `npm run typecheck`, and `git diff --check`. *Checked by 67 checks against stub hosts, with fxbot's SDK in-process on a throwaway Postgres: the catalog and what it leaves out, each key check, fields, headers, the lists, the long tail, a provider from before 0.8.0, and the migration.*
 
 **M2. Sign-ins**
-- [ ] Vercel with fxbot's own client id by default, and `FXBOT_VERCEL_CLIENT_ID` overriding it.
-- [ ] OpenRouter by PKCE, against a stub: the challenge, the callback on the page's origin, the exchange, the key sealed, and the first tab's poll finishing. The `paste` way, for a plain-http origin and for a callback that never comes.
-- [ ] Hugging Face by device code, against a stub: tokens sealed, a refresh near expiry under the lock, and the router's models with their metadata.
-- [ ] OrcaRouter by device code, against a stub: the key sealed, and a provider at its API.
+- [x] Vercel with fxbot's own client id by default, and `FXBOT_VERCEL_CLIENT_ID` overriding it. *Built as the catalog's `clientId`, which no app fills yet (see **Built**). Checked: a published catalog with an id brings the button and its device code asks with that id, the environment's overrides it, and with neither the sign-in is left out and says how to set one.*
+- [x] OpenRouter by PKCE, against a stub: the challenge, the callback on the page's origin, the exchange, the key sealed, and the first tab's poll finishing. The `paste` way, for a plain-http origin and for a callback that never comes.
+- [x] Hugging Face by device code, against a stub: tokens sealed, a refresh near expiry under the lock, and the router's models with their metadata.
+- [x] OrcaRouter by device code, against a stub: the key sealed, and a provider at its API.
 
 **M3. The clouds**
-- [ ] Vertex: a service-account JSON made here with a throwaway RSA key. The JWT is verified against its public key, and traded at a stub token endpoint. The token is cached, and refreshed after 55 minutes. The models come with their `google/` prefix.
-- [ ] Bedrock: the region in the URL, Claude hidden, and the check at mantle's list.
-- [ ] Azure: the resource in the URL, `api-key` sent, and the deployments as the models.
-- [ ] Cloudflare: the account in the URL, the token checked, and models.dev's lists.
+- [x] Vertex: a service-account JSON made here with a throwaway RSA key. The JWT is verified against its public key, and traded at a stub token endpoint. The token is cached, and refreshed after 55 minutes. The models come with their `google/` prefix.
+- [x] Bedrock: the region in the URL, Claude hidden, and the check at mantle's list.
+- [x] Azure: the resource in the URL, `api-key` sent, and the deployments as the models.
+- [x] Cloudflare: the account in the URL, the token checked, and models.dev's lists.
 
 **M4. The page**
-- [ ] `add-provider.tsx`: the groups, search, each kind of card, a device code with its QR and copy link, OpenRouter's redirect and paste, the fields, the key check's messages, and the model step with a recommended model. It's used in Settings, and for **Sign in again** and **Replace key**.
-- [ ] Local servers found on the machine are marked as found.
-- [ ] First-run setup's provider step shows the page in place, with its words.
-- [ ] In a browser with the mock model and stub providers: each card through to a chat that answers. Block `PATCH /api/settings` from the check page, so the owner's time zone isn't saved as UTC.
+- [x] `add-provider.tsx`: the groups, search, each kind of card, a device code with its QR and copy link, OpenRouter's redirect and paste, the fields, the key check's messages, and the model step with a recommended model. It's used in Settings, and for **Sign in again** and **Replace key**.
+- [x] Local servers found on the machine are marked as found. *Checked: a stub answering at Jan's usual address marks Jan **Found here**, and no other.*
+- [x] First-run setup's provider step shows the page in place, with its words.
+- [x] In a browser with the mock model and stub providers: each card through to a chat that answers. Block `PATCH /api/settings` from the check page, so the owner's time zone isn't saved as UTC. *Checked in Chromium against a throwaway fxbot, whose providers answered from stubs: first-run setup, OrcaRouter's and Hugging Face's device codes, OpenRouter's way back and its pasted code, Vertex's file, Bedrock's region, Azure's deployments, Vercel's code, Custom's unreachable server, Replace key, and a phone in the dark. Then a chat on each of the eight providers added answered. The check's fxbot was its own, so no owner's settings were near it.*
 
 **M5. Docs**
-- [ ] Add a provider, the tutorial's provider step, and a page for each provider in the catalog's groups, each with the parts above.
-- [ ] Reference: Providers, built from the catalog when the site builds.
-- [ ] `npm run build-site`, and every card's **Help** lands on its page.
+- [x] Add a provider, the tutorial's provider step, and a page for each provider in the catalog's groups, each with the parts above. *34 pages under **Providers**, from the catalog, the research, and each provider's own docs. Each says what it couldn't confirm, and that fxbot hasn't run the provider with a real key yet.*
+- [x] Reference: Providers, built from the catalog when the site builds. *Its words are `packages/website/src/providers-reference.md`, and the build fills in its table from `providers-registry.json`.*
+- [x] `npm run build-site`, and every card's **Help** lands on its page. *Checked: 100 pages, and all 10,280 links and assets resolve; each of the 37 entries' `docs` is a page, at its heading where it names one.*
 
 **Human checks, with real accounts**
 - [ ] Each sign-in, from a phone over Tailscale and from the machine: Vercel, ChatGPT, Grok, OpenRouter, Hugging Face, and OrcaRouter.
@@ -633,10 +656,10 @@ After a provider, it asks for the model, then **Continue**, as now. A sign-in or
 
 ## 5. Open questions
 
-1. **Who registers fxbot's Vercel and Hugging Face apps?** Both are public apps with no secret, so their client ids ship in fxbot. Each needs an account to own it, a name, and an icon. The default is the project's own accounts, named "fxbot".
-2. **Ask Nous for a client id for fxbot?** Its device code would give Nous Portal a sign-in button. The default is to ask, and use a key until then. OrcaRouter's partner `app_id`, for its Verified badge, is the same kind of ask.
-3. **The featured order.** The default is by demand: AI Gateway, OpenAI, Anthropic, Gemini, DeepSeek, OpenRouter, Z.ai, Qwen, Kimi, MiniMax, xAI, Mistral, Groq, Together, Fireworks, DeepInfra, Cerebras, NVIDIA, Nous Portal.
-4. **Untested providers in search: shown with a note, or hidden?** The default is shown, with "Not yet tried with fxbot".
-5. **OpenRouter's attribution headers, on or off?** On would send `HTTP-Referer: https://fxbot.sh` and `X-OpenRouter-Title: fxbot`, and list fxbot among OpenRouter's apps. That says nothing about the owner that the key doesn't already. The default is on.
-6. **First-run setup: a way to skip the provider?** Hermes has "I'll choose a provider later". The default is no, since a first bot can't answer without one, and today's whole-setup skip stays.
-7. **libfx's Codex sign-in, or OpenAI's new Sign in with ChatGPT?** The default is libfx's, which works today. The new one waits for libfx to speak the Responses API.
+1. **Who registers fxbot's Vercel and Hugging Face apps?** Both are public apps with no secret, so their client ids ship in fxbot. Each needs an account to own it, a name, and an icon. The default is the project's own accounts, named "fxbot". *Still open: the build reads the ids from the catalog, so they can be added at fxbot.sh once the apps exist (see **Built**).*
+2. **Ask Nous for a client id for fxbot?** Its device code would give Nous Portal a sign-in button. The default is to ask, and use a key until then. OrcaRouter's partner `app_id`, for its Verified badge, is the same kind of ask. *Built: a key, for now. Asking is the owner's.*
+3. **The featured order.** The default is by demand: AI Gateway, OpenAI, Anthropic, Gemini, DeepSeek, OpenRouter, Z.ai, Qwen, Kimi, MiniMax, xAI, Mistral, Groq, Together, Fireworks, DeepInfra, Cerebras, NVIDIA, Nous Portal. *Built as the default, with Hugging Face before Nous Portal, and OrcaRouter and OpenCode after it.*
+4. **Untested providers in search: shown with a note, or hidden?** The default is shown, with "Not yet tried with fxbot". *Built as the default.*
+5. **OpenRouter's attribution headers, on or off?** On would send `HTTP-Referer: https://fxbot.sh` and `X-OpenRouter-Title: fxbot`, and list fxbot among OpenRouter's apps. That says nothing about the owner that the key doesn't already. The default is on. *Built as the default.*
+6. **First-run setup: a way to skip the provider?** Hermes has "I'll choose a provider later". The default is no, since a first bot can't answer without one, and today's whole-setup skip stays. *Built as the default.*
+7. **libfx's Codex sign-in, or OpenAI's new Sign in with ChatGPT?** The default is libfx's, which works today. The new one waits for libfx to speak the Responses API. *Built as the default.*

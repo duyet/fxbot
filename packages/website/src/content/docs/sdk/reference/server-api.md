@@ -83,37 +83,44 @@ See [Stream replies](/sdk/how-to/stream-replies/).
 
 ## Providers
 
-The kinds are in [Providers](/docs/reference/providers/) and the `kinds` table.
+A provider's `kind` is the `id` of its entry in fxbot's list of providers, `providers-registry.json`, which `providers.catalog()` answers. Every entry is in [Providers](/docs/reference/providers/).
 
 | Call | What it does | Returns |
 | --- | --- | --- |
-| `providers.list()` | Every provider, in the order they were added. `hasKey` and `signedIn` say whether it holds a key or a sign-in, not what it is. | `Provider[]` |
-| `providers.add(input)` | A provider of a key kind or a server kind. A key is checked with the provider first. | `Provider` |
-| `providers.update(id, input)` | Changes `name`, `model`, `apiKey`, `baseUrl` (server kinds), `contextWindow` (server kinds), or `teamId` (a Vercel account) | `Provider` |
+| `providers.catalog()` | What there is to add: the list's entries this fxbot can run, models.dev's other OpenAI-compatible hosts in `more`, and whether fxbot runs in a container (`createFxbot`'s `machine` is set). A sign-in whose app isn't set is left out of its entry. The list is the one this release shipped with until `${listsUrl}/providers-registry.json` answers, and is read again every hour. | `Catalog` |
+| `providers.local()` | The local servers in the list that answer at their usual address, each given half a second | `LocalServer[]` |
+| `providers.list()` | Every provider, in the order they were added. `hasKey` and `signedIn` say whether it holds a key or a sign-in, not what it is. `label`, `connect`, and `docs` come from its entry. | `Provider[]` |
+| `providers.add(input)` | A provider from an entry that takes a key, an address, or a service account. A key is checked with the provider first. | `Provider` |
+| `providers.update(id, input)` | Changes `name`, `model`, `apiKey`, `serviceAccount` (Vertex AI), `modelIds`, `baseUrl` (a server's), `contextWindow` (a server's), or `teamId` (a Vercel account) | `Provider` |
 | `providers.remove(id)` | Removes the provider. It fails with 400 while bots use it. When it was Settings' `defaultProvider` or `embeddingProvider`, that becomes `""`. | nothing |
 | `providers.models(id)` | The provider's models, and what fxbot knows of each | `Model[]` |
 | `providers.teams(id)` | A Vercel account's teams. Other kinds fail with 400. | `Team[]` |
 
 `providers.add` takes a `NewProvider`:
 
-- `kind` is a key kind or a server kind. `chatgpt`, `grok`, and `vercel` are added by signing in, and fail here with 400.
-- `baseUrl` is fixed for a key kind. A server kind takes one, or uses its default, and `custom` needs one. It is `https`, or `http` on `localhost`, `127.0.0.1`, or `[::1]`, with no credentials, query, or fragment.
-- `apiKey` is required for a key kind, optional for `custom`, and up to 4,096 characters. The check lists the provider's models with it. A 401 or 403 fails with 400, "The provider rejected this key." A 404 passes.
-- `name` defaults to the kind's label. `model` is the default model for the provider's bots. `contextWindow` is for server kinds only: a whole number of tokens, or `null`. It overrides what the server reports.
+- `kind` is an entry's `id`, from the list or from `more`. An entry that only signs in, such as `chatgpt`, fails here with 400.
+- `fields` fill the entry's address, such as Bedrock's `{ region: "us-west-2" }`. A field with options takes one of them; any other takes a name of letters, digits, `.`, `_`, and `-`. A field left out takes its default.
+- `baseUrl` is the entry's, with its fields, for a key. A server takes one, or uses its default, and `custom` needs one. It is `https`, or `http` on `localhost`, `127.0.0.1`, or `[::1]`, with no credentials, query, or fragment.
+- `apiKey` is required for a key, optional for a server, and up to 4,096 characters. It is checked at the entry's `keyCheck`, or at the provider's `/models`, with the entry's headers. A status in the entry's `badKey`, 401 and 403 unless it says, fails with 400, "<Name> rejected this key (HTTP <status>): <why>." A 404 passes.
+- `serviceAccount` is a service account's JSON key, as text, for `vertex`. Google must make a token from it, or it fails with 400.
+- `modelIds` are model ids to list: an entry whose models are `typed`, such as Azure's deployments, needs at least one, and a server that lists models shows them after its own.
+- `name` defaults to the entry's name. `model` is the default model for the provider's bots. `contextWindow` is for servers only: a whole number of tokens, or `null`. It overrides what the server reports.
 
-`providers.update` fails with 400 for `apiKey` on a kind that signs in, and for `baseUrl` on a kind that isn't a server. A new key, address, or team drops the kept model list.
+`providers.update` fails with 400 for `apiKey` on a provider that signs in or takes a service account, and for `baseUrl` on one that isn't a server. A new key, address, team, service account, or model ids drops the kept model list.
 
 ### Sign-ins
 
-A device code sign-in adds a ChatGPT plan, a Grok plan, or a Vercel account. See [Connect providers](/sdk/how-to/providers/).
+A sign-in adds a provider from an entry with `signIn`: ChatGPT, Grok, Vercel, Hugging Face, and OrcaRouter by device code, and OpenRouter by PKCE. See [Connect providers](/sdk/how-to/providers/).
 
 | Call | What it does | Returns |
 | --- | --- | --- |
-| `signIns.start({ kind, provider? })` | Starts a sign-in for `chatgpt`, `grok`, or `vercel`. With `provider`, it signs that provider in again. One runs at a time: a new one replaces one that waits. It fails with 502 when the service gives no code. | `SignIn` |
+| `signIns.start({ kind, provider?, way? }, origin?)` | Starts a sign-in. With `provider`, it signs that provider in again. One runs at a time: a new one replaces one that waits. It fails with 502 when the service gives no code. OpenRouter's `way` is `redirect`, back to `${origin}/api/sign-ins/<id>/callback`, when `origin` is HTTPS or on localhost, and `paste` otherwise, or when `way` is `"paste"`. | `SignIn` |
 | `signIns.get(id)` | Synchronous. The sign-in's status. It fails with 404 for a sign-in that isn't the latest one. When it is `done`, `provider` is the provider's id. | `SignInStatus` |
+| `signIns.callback(id, query)` | Finishes a `redirect` sign-in with the `code` and `state` it came back with | `SignInStatus` |
+| `signIns.code(id, code)` | Finishes OpenRouter's sign-in with the code its page showed | `SignInStatus` |
 | `signIns.cancel(id)` | Synchronous. Stops a sign-in that waits. | nothing |
 
-A new Vercel account with one team gets that team.
+A new Vercel account with one team gets that team. Vercel's and Hugging Face's sign-ins need fxbot's own app at each: `createFxbot`'s `vercelClientId` and `hfClientId`, or the `clientId` the list names.
 
 ## Settings
 
@@ -251,7 +258,7 @@ From `@fxbot/sdk`, besides `createFxbot`:
 | `moods`, `heads`, `faces`, `outfits`, `tints` | What a bot can feel and wear, by name |
 | `colors` | A bot's colors, from name to hex: `black`, `brown`, `red`, `orange`, `amber`, `green`, `teal`, `blue`, `purple`, `pink`, `gray` |
 | `shapes` | A bot's shapes: `circle`, `cloud`, `squircle`, `star`, `clover`, `heart`, `flower`, `egg`, `bean`, `triangle`, `diamond`, `sparkle`, `hexagon`, `pumpkin`, `mochi`, `gumdrop`, `toast`, `arch`, `pill`, `drop`, `peanut`, `puff`, `mushroom`, `bear`, `cat`, `mouse`, `bunny`, `frog`, `imp`, `bot`, `ghost`, `sprout` |
-| `kinds` | Each provider kind's `label`, `connect` (`device`, `key`, or `url`), and `baseUrl` where it is fixed or a default |
+| `kinds` | The eleven kinds fxbot has had since 0.2.0, each with its `label`, `connect` (`device`, `key`, or `url`), and `baseUrl` where it is fixed or a default. Every provider there is to add is in `providers.catalog()`. |
 | `itemKinds` | `image`, `document` |
 | `embeddingKinds` | The provider kinds that serve `/embeddings`: `openai`, `openrouter`, `gateway`, `vercel`, `ollama`, `lmstudio`, `custom` |
 | `maxPinned` | 3 |
@@ -279,9 +286,14 @@ type Upload = { name: string; type: string; url?: string; data?: string }; // da
 
 type Provider = {
   id: string;
-  kind: Kind;
+  kind: string; // its entry's id
+  label: string; // its entry's name
+  connect: "device" | "key" | "url" | "service-account";
+  docs: string | null; // its page in these docs
   name: string;
   baseUrl: string | null;
+  fields: Record<string, string>; // what filled its address
+  modelIds: string[]; // the model ids typed for it
   model: string;
   contextWindow: number | null;
   teamId: string | null;
@@ -289,6 +301,12 @@ type Provider = {
   signedIn: boolean;
   error: string | null; // why its agent didn't start
 };
+
+// A device code (`verificationUrl`, `userCode`), or a page to open (`url`) that comes back or shows a code to paste.
+type SignIn = { id: string; way: "device" | "redirect" | "paste"; verificationUrl?: string; userCode?: string; url?: string; expiresAt: number };
+
+// What there is to add. Each entry's fields are described in packages/sdk/src/types.ts.
+type Catalog = { providers: CatalogEntry[]; more: CatalogEntry[]; container: boolean };
 
 type Settings = { defaultProvider: string; defaultProfile: string; unvetted: boolean; timeZone: string; onboarded: boolean; onboardingStep: string; turnsAtOnce: number; embedder: "local" | "remote" | "off"; embeddingProvider: string; embeddingModel: string; messageVectors: number };
 
