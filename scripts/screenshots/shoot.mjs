@@ -55,6 +55,8 @@ async function main() {
   const plugins = ["pages", "chat-rooms", "messages", "permissions", "routines", "fresh", "dreams"].map((name) => join(root, "plugins", name));
   const fx = await fxbot(db, "world", key, plugins, model.embed);
   const w = await world(fx, model);
+  // A page shows when it was saved: one fixed time, so a shot looks the same on every run.
+  db.sql("shots_world", "update plugin_pages.versions set at = '2026-11-08 19:45:00 America/New_York'");
   const at = (bot) => `/profiles/${w[bot].id}`;
   await shoot("hero", fx, at("Juniper"), { devices: ["desktop", "phone"], scale: 2 });
   await shoot("look", fx, at("Juniper"), { devices: ["desktop", "phone"], scale: 2, async then(pg) {
@@ -113,8 +115,14 @@ async function database() {
     await sleep(500);
   }
   await sleep(1500);
-  const make = (db) => spawnSync(engine, ["exec", name, "psql", "-U", "fxbot", "-d", "fxbot", "-c", `create database ${db}`]);
-  return { url: (db) => (make(db), `postgres://fxbot:${password}@127.0.0.1:${port}/${db}`) };
+  const psql = (db, query) => spawnSync(engine, ["exec", name, "psql", "-U", "fxbot", "-d", db, "-v", "ON_ERROR_STOP=1", "-c", query], { encoding: "utf8" });
+  return {
+    url: (db) => (psql("fxbot", `create database ${db}`), `postgres://fxbot:${password}@127.0.0.1:${port}/${db}`),
+    sql(db, query) {
+      const run = psql(db, query);
+      if (run.status !== 0) throw new Error(`The database refused: ${run.stderr}`);
+    },
+  };
 }
 
 // fxbot from this checkout, with nothing from the environment but what's set here: no .env, no update check, and
@@ -294,7 +302,8 @@ function shooter(browser) {
         const shot = await pg.screenshot(main ? { clip: await pg.locator("main").last().boundingBox() } : {});
         if (errors.length) log(`  ${name}: page errors: ${errors.join(" | ")}`);
         const file = join(out, `${name}-${device}-${theme}.png`);
-        const changed = !existsSync(file) || (await differs(pg, readFileSync(file), shot)) > 0.002;
+        const diff = existsSync(file) ? await differs(pg, readFileSync(file), shot) : null;
+        const changed = !diff || diff.share > 0.002 || diff.strong > 100;
         if (changed) writeFileSync(file, shot);
         counts[changed ? "written" : "same"]++;
         log(`${changed ? "wrote" : "same "} ${name}-${device}-${theme}`);
@@ -309,12 +318,17 @@ async function differs(pg, before, after) {
   return pg.evaluate(async ([a, b]) => {
     const load = (data) => new Promise((done, fail) => { const img = new Image(); img.onload = () => done(img); img.onerror = fail; img.src = "data:image/png;base64," + data; });
     const [x, y] = await Promise.all([load(a), load(b)]);
-    if (x.width !== y.width || x.height !== y.height) return 1;
+    if (x.width !== y.width || x.height !== y.height) return { share: 1, strong: Infinity };
     const pixels = (img) => { const c = new OffscreenCanvas(img.width, img.height); const g = c.getContext("2d"); g.drawImage(img, 0, 0); return g.getImageData(0, 0, img.width, img.height).data; };
     const p = pixels(x), q = pixels(y);
-    let different = 0;
-    for (let i = 0; i < p.length; i += 4) if (Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]) + Math.abs(p[i + 2] - q[i + 2]) > 24) different++;
-    return different / (p.length / 4);
+    // A share of pixels a little changed, or a few changed a lot, such as one small icon in another color.
+    let different = 0, strong = 0;
+    for (let i = 0; i < p.length; i += 4) {
+      const delta = Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]) + Math.abs(p[i + 2] - q[i + 2]);
+      if (delta > 24) different++;
+      if (delta > 150) strong++;
+    }
+    return { share: different / (p.length / 4), strong };
   }, [before.toString("base64"), Buffer.from(after).toString("base64")]);
 }
 
