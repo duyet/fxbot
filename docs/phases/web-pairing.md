@@ -3,18 +3,19 @@
 The owner's fxbot, from their phone or any computer, with nothing exposed and no Tailscale:
 - **web.fxbot.sh is a PWA** that opens the owner's own fxbot, with its whole UI and plugins, over a WebRTC data channel straight to their fxbot. It works wherever the two can reach each other: home, work, or a phone's network.
 - **Peer to peer and end-to-end encrypted.** fxbot.sh hosts only the handshake: a relay that passes sealed messages between the two, reads none of them, and stores nothing. The page's own code comes from the site. Everything the owner sees, the UI included, comes from their fxbot through the channel.
-- **Pairing starts where fxbot already trusts the owner.** That's Settings › Devices on the machine, `fxbot pair` on a server, or a device that's already paired. It shows a QR code and a short code. The new device enters the code, both screens show the same six digits, and the owner approves.
+- **Pairing starts where fxbot already trusts the owner.** That's Settings › Devices on the machine, the same page through an SSH tunnel on a server, or a device that's already paired. It shows a QR code and a short code. The new device enters the code, both screens show the same six digits, and the owner approves.
 - **A pairing lasts until the owner removes it.** A device is a key its browser keeps, with no tokens and no expiry. It reconnects by itself after a lock screen, a network change, or a restart on either side. A paired device can pair another one from anywhere, so a lost pairing doesn't wait for home.
-- **On fxbot's side, it's a plugin,** `web-pairing`. It keeps one outbound connection to the relay, lets in only the devices it paired, and passes their requests to its own API. An owner who doesn't add it runs nothing new.
-- **Some networks can't connect directly.** Since fxbot.sh relays no traffic, a phone network with symmetric NAT or a workplace that blocks UDP needs one of these:
-  - the owner's own TURN server
-  - a port mapping on the home router
-  - IPv6
-  - Tailscale
+- **On fxbot's side, it's a plugin,** `web-pairing`, with all of the peer-to-peer code. Once a device is paired, it keeps one outbound connection to the relay, lets in only the devices it paired, and passes their requests to its own API. Until then, it runs nothing.
+- **STUN only, by default.** Cloudflare's STUN finds each end's public address, and the two connect directly. fxbot.sh relays no traffic. The owner can:
+  - add STUN servers of their own, put them first, or drop Cloudflare's
+  - add a TURN server of their own
+- **It says in advance what will connect.**
+  - **On fxbot's side:** it checks its own network (UDP, its NAT, port mapping, IPv6, a container) and shows what that means for a phone elsewhere.
+  - **When a device can't connect:** it says why, from both ends, and links to the docs page that fixes it.
+  - **The docs cover each way in detail:** Tailscale, WireGuard, a TURN or STUN server of the owner's own, and a forwarded or mapped port.
+- **In the Essentials pack, STUN only.** A new install has it. It opens no connection until a device is paired.
 
-  The app says so, and which one would help.
-
-Status: planned on 2026-11-08, for 0.8.0, not built. Researched the same day:
+Status: planned on 2026-11-08, for 0.8.0, not built. The owner's decisions of 2026-11-09 are under What the owner asked. Researched on 2026-11-08:
 - the research directive's references
 - products that reach a self-hosted agent or server from a phone: Happy, OpenClaw, Claude Code Remote Control, Codex Remote, go2rtc, PairDrop, and others
 - the pairing designs of Magic Wormhole, Signal, WhatsApp, Matter, HomeKit, KDE Connect, Syncthing, and Chrome Remote Desktop
@@ -50,16 +51,31 @@ So:
   - fxbot's UI, which comes from each owner's own fxbot
   - anything that stays after a connection
 
+After reading the plan, on 2026-11-09:
+
+"1. STUN only by default. Cloudflare default, users can add their own and disable cloudflare or set as priority order etc..."
+
+"2. TURN available for users to deploy themselves (later if we host a cloud version they can get it included)..."
+
+"If direct peer to peer won't work (network reasons etc) we should give the user a notice and point them to our docs on how to use tailscale, wireguard, TURN, etc... Which means we should do our best to discover and proactively tell folks how it works. Docs should cover setting up your own tailscale, wireguard, STUn, TURN, etc in detail."
+
+"All of the peer to peer stuff should go into a plugin, not core. It will be enabled in essentials pack and STUN only."
+
+So:
+- **ICE servers are an ordered list the owner edits.** It holds Cloudflare's STUN by default; the owner can add their own, reorder it, or remove Cloudflare's. TURN is the owner's own, and a hosted cloud version could include one later.
+- **fxbot checks its reachability in advance.** When a connection fails, the notice links to docs for each way through.
+- **All of it lives in the `web-pairing` plugin and the web app, in Essentials.**
+
 ## 0. Core or plugin
 
-**Plugin: `web-pairing`,** in `plugins/web-pairing/` ([Core or plugin](../../CONVENTIONS.md#core-or-plugin)). Reaching fxbot from elsewhere isn't something every bot needs, isn't what plugins plug into, and isn't what fxbot needs to run: Tailscale, a proxy, or the machine itself already work. As a plugin, an owner who doesn't add it has no relay connection, no timer, no table, and no code in the page. It needs nothing it can't have already:
+**Plugin: `web-pairing`,** in `plugins/web-pairing/` ([Core or plugin](../../CONVENTIONS.md#core-or-plugin)), with all of the peer-to-peer code, by the owner's decision. It's in the Essentials pack, STUN only, so a new install has it. It connects to the relay only once a pairing opens or a device is paired, so an owner who never pairs still runs nothing. Reaching fxbot from elsewhere isn't something every bot needs, isn't what plugins plug into, and isn't what fxbot needs to run: Tailscale, a proxy, or the machine itself already work. As a plugin, an owner who doesn't add it has no relay connection, no timer, no table, and no code in the page. It needs nothing it can't have already:
 - tables of its own, for devices
 - routes of its own, for pairing
 - a Settings tab, for Devices
 - a long-running task under its `signal`, for the relay connection
 - requests to its own server, for the bridge
 
-**Two small hooks in the plugin API,** each the smallest a real plugin needs. Both are additive, so `plugin-breaks.json` gets nothing. `web-pairing` sets `minFxbot` to 0.8.0.
+**Two small hooks in the plugin API,** each the smallest a real plugin needs, and general: neither knows about peers or pairing, and any plugin may use them. Both are additive, so `plugin-breaks.json` gets nothing. `web-pairing` sets `minFxbot` to 0.8.0.
 - **`fx.secrets`:** `get(name)` and `set(name, value)` for values the plugin makes itself, sealed by the SDK beside its settings in `plugin_secrets` (`packages/sdk/src/plugins.ts:221`). The plugin's two private keys need it. Today a plugin can only read the secrets the owner typed into its settings (`plugin-api.ts:93-94`). Since 0.8.0.
 - **`fx.localUrl`:** the server's own address on its machine, which the SDK already has for MCP sign-ins (`packages/server/src/index.ts:31`). The bridge sends requests there. Since 0.8.0.
 
@@ -355,10 +371,12 @@ None of them has phone pairing, a relay, or WebRTC to a server:
    - The frame's service worker and a small script give the unchanged UI its `fetch`, `WebSocket`, and URLs.
    - Plugin code there can't reach any key, or another fxbot.
 6. **One Cloudflare Worker is the whole hosted part.** It serves the static shell and frame files, and the relay. It stores nothing, costs $0–5 a month at 1,000 fxbots, and an owner can run their own.
-7. **Without hosted TURN, some networks fail, and the app says which fix would help.**
-   - Most connections are direct.
-   - A symmetric-NAT carrier against a home router, or a workplace that blocks UDP, needs one of these: a mapped port at home, IPv6, the owner's TURN, or Tailscale.
-8. **Instance side: a plugin, with two small hooks:** `fx.secrets` and `fx.localUrl`. Its WebRTC is werift, pure TypeScript, bundled into the plugin's server file. node-datachannel, native and 2–3× faster, stays the way out behind the same `RTCPeerConnection` API if werift fails a browser.
+7. **STUN only, and say what will work.**
+   - **The servers:** Cloudflare's STUN by default, in an ordered list the owner controls, plus TURN of their own.
+   - **Most connections are direct.** A symmetric-NAT carrier against a home router, or a workplace that blocks UDP, needs one of these: a mapped port, IPv6, the owner's TURN, Tailscale, or WireGuard.
+   - **The checks:** fxbot checks its own side in advance, and the device checks its side as it connects.
+   - **A failed connection** names the cause, and links to the docs page that fixes it.
+8. **Instance side: a plugin with all of the peer-to-peer code, in Essentials, and two small general hooks:** `fx.secrets` and `fx.localUrl`. Its WebRTC is werift, pure TypeScript, bundled into the plugin's server file. node-datachannel, native and 2–3× faster, stays the way out behind the same `RTCPeerConnection` API if werift fails a browser.
 9. **Plan for iOS:**
    - Pair inside the installed app.
    - Expect the channel to drop on every app switch, and reconnect on return.
@@ -413,7 +431,7 @@ Nothing else is stored, by either side.
 
 **The owner starts it where fxbot already trusts them:**
 - Settings › Devices › **Pair a device**, on the machine or over Tailscale.
-- `fxbot pair` on a server: `deploy/fxbot` calls the plugin's route on 127.0.0.1, prints the link and the code, and asks for the six digits.
+- On a server with no browser: an SSH tunnel to its loopback, `ssh -L 8787:127.0.0.1:8787 <server>`, opens its Settings on the owner's laptop, as the docs show. `deploy/` doesn't change.
 - **Pair another device** on a paired device.
 
 Only that side shows a code, so an attacker can't hand the owner one that grants access.
@@ -463,7 +481,7 @@ Each launch, return to the front, or network change, the device runs Noise IK (`
 | --- | --- | --- |
 | K1, device → fxbot | IK message 1 | `{ seq, versions }`. `seq` grows on every connect; a Web Lock keeps two tabs from racing it. |
 | fxbot | | It finds the device by the static key it decrypted. It refuses a key it doesn't know, a revoked one, or a `seq` no greater than `last_seq`, as WireGuard keeps the greatest timestamp from each peer. |
-| K2, fxbot → device | IK message 2 | `{ iceServers }`: STUN, and the owner's TURN with fresh credentials when they set one up. |
+| K2, fxbot → device | IK message 2 | `{ iceServers, reachability }`: the owner's ordered list, STUN and any TURN of theirs with fresh credentials, and what fxbot found about its own network |
 | Transport messages, both ways | AES-GCM with strict counters | the offer, the answer, and each ICE candidate |
 | The channel | | The browser checks the DTLS certificate against the fingerprint it received. Each side's first data-channel message is `HMAC(k, role ‖ handshake hash)`, as a cheap second check. |
 
@@ -493,32 +511,64 @@ One Worker with a Durable Object class, about 120 lines:
 - No `ctx.storage`, no alarms, and logs off.
 - The listener sends a small application ping every 30 s, which `setWebSocketAutoResponse` answers without waking the object. Node's own `WebSocket` has no protocol pings.
 - It reconnects after a drop with jitter, from 1 s up to 60 s, since a Cloudflare deploy drops every socket at once.
+- fxbot connects only while a pairing is open or a device is paired. With Essentials on every new install, that keeps the relay's load to owners who use it.
 
 **Settings › Devices names the relay,** `https://web.fxbot.sh/signal` by default. An owner who runs the same Worker on their own Cloudflare account puts its address there, and their links carry it.
 
 ### Getting through
 
-**fxbot's side:**
-- **STUN:** `stun:stun.cloudflare.com:3478` first, then `stun:stun.l.google.com:19302`.
-- **A small fixed UDP range for ICE,** 8790–8799 by default, through werift's `icePortRange` (*likely*). Settings shows it, so an owner can forward it by hand, and a mapping holds.
-- **Port mapping (M5):** fxbot asks the router for that port by PCP, NAT-PMP, or UPnP, renews it, and shows whether it got one.
-  - Inside a container, discovery can't cross the bridge. So a release install publishes the UDP range (`deploy/compose.yaml`), and mapping waits for the app download or host networking. Nothing answers on those ports but ICE checks, whose credentials only the sealed session carries.
-  - Its library goes into the plugin's bundle too: `@achingbrain/nat-port-mapper`, pure JavaScript, for UPnP and NAT-PMP. PCP waits for a pure-JavaScript library.
+**STUN only, by default.** A direct connection is the one path fxbot.sh offers:
+- **ICE servers are an ordered list** in Settings › Devices, tried in that order.
+  - **The default is one entry,** Cloudflare's STUN, `stun:stun.cloudflare.com:3478`.
+  - **The owner controls the rest:** they can add STUN servers of their own, move them ahead, or remove Cloudflare's.
+- **TURN is the owner's own, when they add one** to the same list, in one of three forms:
+  - **A TURN URL** with a username and password.
+  - **A Cloudflare TURN key** on their own account. fxbot mints credentials from it, 48 hours at most.
+  - **A coturn or eturnal shared secret.** fxbot mints time-limited credentials from it, with no API call.
+
+  The credentials are sealed with `fx.secrets`, and reach the device in K2.
+- **The list is the whole list.** fxbot passes it to werift explicitly, since werift adds Google's STUN by itself when given none. The device gets the same list in K2, before it gathers a candidate. Nothing else is contacted.
+- **A small fixed UDP range for ICE,** 8790–8799 by default, through werift's `icePortRange` (*likely*). A forwarded or mapped port then holds.
+- **Port mapping:** fxbot asks the router for that range by NAT-PMP or UPnP, renews it, and shows what it got. The library is `@achingbrain/nat-port-mapper`, pure JavaScript, in the plugin's bundle. Mapping is off inside a container, where discovery can't cross the bridge.
 - **IPv6** wherever the machine has it.
-- **TURN, only the owner's,** set up in Settings › Devices, with its credentials sealed:
-  - their Cloudflare TURN key, which mints 48-hour credentials
-  - a coturn or eturnal shared secret, which mints time-limited ones
-  - or a plain URL with a username and password
 
-  They reach the device in K2.
+**fxbot checks its own reachability in advance, and says what it found,** under Settings › Devices › Reachability. It checks when the owner opens Settings › Devices, on **Check again**, and when the ICE list changes. While a device is paired, it also checks every 6 hours. With nothing paired, nothing runs in the background:
 
-**When nothing connects after 15 seconds,** the shell says fxbot answered the handshake but no direct path works from this network, with what would:
-- this network or another (Wi-Fi or cellular)
-- a forwarded or mapped UDP port at home
-- a TURN server of the owner's own
-- Tailscale
+| Check | How | What the owner reads |
+| --- | --- | --- |
+| UDP out | any STUN answer at all | none: "This network blocks UDP, so devices can't connect directly. Use Tailscale or WireGuard, or a TURN server of your own over TLS." |
+| Its public address | STUN's answer, against the external address port mapping reports | when they differ, or the address is in 100.64/10: "This fxbot is behind carrier-grade NAT. Devices on other networks likely can't reach it directly, and forwarding a port won't help. TURN, Tailscale, or WireGuard will." |
+| How its NAT maps | the mapped port that two STUN answers report for one socket; different ports mean a symmetric NAT | it needs two answers: two servers in the list, or one server at two addresses. With one, it says it can't tell. |
+| A mapped port | port mapping's answer | "Devices on any network that allows UDP can likely reach this fxbot." A port forwarded by hand can't be seen from inside, so it says so. |
+| IPv6 | a global address, and a STUN answer over it | "Devices with IPv6 can likely connect directly." |
+| A container | `/.dockerenv` or `/run/.containerenv` | "Port mapping can't work from inside the container. To forward a port, publish 8790–8799/udp" (with the docs' compose override) |
 
-It knows the handshake succeeded, so this message never covers for a wrong key.
+At the top, one line sums it up:
+- "Likely reachable from most networks"
+- "Reachable from many networks, but not from phones on some carriers"
+- "Not reachable directly from outside this network"
+
+The owner sees this before pairing, so they know in advance what a phone at work will need. fxbot sends the same findings, a few fields, to each device in K2.
+
+**The device checks its side as it connects,** from its own ICE candidates:
+- no server-reflexive candidate means its network blocks UDP
+- two different mapped ports from two STUN servers mean a symmetric NAT
+- an IPv6 candidate means it has IPv6
+
+**When no direct path works within 15 seconds,** the shell shows a notice:
+1. **What happened:** "Your fxbot answered, but no direct path works between this network and it."
+2. **What each side found,** such as:
+   - "This network blocks UDP."
+   - "This phone's network maps ports per destination, and your fxbot has no mapped port."
+   - "Your fxbot is behind carrier-grade NAT."
+3. **What would work, in order,** each a link to its page in the docs:
+   - another network
+   - a mapped or forwarded port at home
+   - a TURN server of your own
+   - Tailscale
+   - WireGuard
+
+The handshake succeeded, so this notice never covers for a wrong key or a removed device; those have messages of their own.
 
 ### The bridge (in the plugin)
 
@@ -574,7 +624,13 @@ It knows the handshake succeeded, so this message never covers for a wrong key.
 - **Pair a device:** the code, the QR, then the approval with the six digits.
 - **Each device:** its name, what it is, when and how it was paired, and when it was last seen. **Rename** and **Remove**.
 - **Remote access:** on or off. Off closes the relay connection and every channel.
-- **The relay,** the ICE ports, the port mapping and what it got, and the owner's TURN.
+- **Reachability:** the summary line and each check, with **Check again**, and a link to the docs for each finding.
+- **ICE servers:**
+  - the ordered list, Cloudflare's STUN first by default
+  - add a STUN server, or one of the three kinds of TURN
+  - move an entry up or down
+  - remove any entry, Cloudflare's included
+- **The relay,** the ICE ports, and the port mapping and what it got.
 - **This fxbot's key fingerprint,** for comparing.
 
 ### Staying paired
@@ -609,23 +665,49 @@ It knows the handshake succeeded, so this message never covers for a wrong key.
 
 ### The docs
 
-How-to pages, describing what each does:
-- **Reach fxbot from your phone:** install the app, pair, and the six digits.
-- **Pair another device from one you have.**
-- **When a device can't connect:** the network cases, a port, TURN of your own, and Tailscale.
-- **Run your own relay.**
+The notice and Reachability link straight to these, so each page has a section per case. They describe what each thing does, step by step.
 
-Reference pages:
-- **web.fxbot.sh, what it hosts and what it can see.**
-- **The `web-pairing` plugin's settings.**
+**Using it:**
+- **How-to: Reach fxbot from your phone.** Install the app (on an iPhone, add it to the Home Screen first), pair, the six digits, and pairing a second device.
+- **How-to: Pair another device from one you have,** and remove a lost one.
+- **How-to: When a device can't connect.** Each finding the notice and Reachability show: what it means, and the fixes, in order.
 
-Also: **Reach it** gets a line on web pairing beside Tailscale, the plugin directory gets the plugin, `CHANGELOG.md`, and the README.
+**Getting through, in detail:**
+- **How-to: Forward or map a port.** The ICE range; UPnP and NAT-PMP on common routers; a forward by hand; publishing the range from the release's containers with a compose override; and checking it under Reachability.
+- **How-to: Reach fxbot with Tailscale.** The existing Reach it and Tailscale service pages, with a phone's steps added: the app, `tailscale serve`, and MagicDNS. Tailscale works where UDP is blocked, over its DERP relays. With it on, web pairing *likely* connects through the tailnet too, since fxbot's tailnet address is one of its candidates.
+- **How-to: Reach fxbot with WireGuard.**
+  - **Where it runs:** on the router where it has WireGuard, or on fxbot's machine, with UDP 51820 forwarded.
+  - **Setting it up:** keys, a peer for each phone with `AllowedIPs` of fxbot's machine only, the phone's app, and a QR of its config.
+  - **Opening fxbot:** through web pairing over the tunnel, *likely*, or with a proxy on the WireGuard address, since fxbot listens on loopback.
+  - **When it doesn't help:** when the home itself is behind carrier-grade NAT, the page says so.
+- **How-to: Run your own TURN server.**
+  - **On a small VPS,** with coturn or eturnal:
+    - TLS on 443 with a certificate, for networks that allow only HTTPS
+    - `use-auth-secret` with a shared secret
+    - `denied-peer-ip` for private and link-local ranges, so it can't be turned on the VPS's own network
+    - a quota for each user, and logging off
+    - the firewall
+    - the secret into Settings
+  - **Or Cloudflare's TURN on your own account:** make a TURN key, and put its id and token into Settings. 1,000 GB a month is free, then $0.05/GB of what Cloudflare sends.
+  - **Either way,** what a TURN server sees: IPs, timing, and volume; never the contents.
+- **How-to: Run your own STUN server.** coturn with `stun-only`, or another public server; then put it first in the list, or remove Cloudflare's.
+- **How-to: Run your own relay.** The same Worker on your own Cloudflare account, and its address in Settings.
+
+**Understanding it:**
+- **Explanation: How web pairing works.** The shell and the frame; the handshake relay; STUN and TURN; what each party sees; and why some networks can't connect directly, with the cases in the Reachability table.
+- **Reference: the `web-pairing` plugin's settings, and what fxbot.sh hosts.**
+
+**Also:**
+- **Reach it** gets a line on web pairing beside Tailscale.
+- The plugin directory gets the plugin.
+- **Onboarding's Essentials** says it adds web pairing, STUN only.
+- `CHANGELOG.md` and the README.
 
 ### Cost
 
 **For the owner:**
 - **Nothing to install on the machine,** and no account.
-- **Idle cost:** one WebSocket to Cloudflare, with a ping every 30 s, and nothing more.
+- **Idle cost:** none until a device is paired. Then one WebSocket to Cloudflare, with a ping every 30 s, and a reachability check every 6 hours.
 - **A connection:** about 1 second of setup, *likely*, and then whatever the UI asks for, over the channel.
 - **First open on a new device:** about 1.5 MB of fxbot's page, cached after.
 
@@ -635,8 +717,12 @@ Also: **Reach it** gets a line on web pairing beside Tailscale, the plugin direc
 
 ### Not in this phase
 
-- **Hosted TURN,** by the owner's rule.
-- **Notifications to a closed app.** Web Push signed by fxbot's own VAPID key, which needs no host of fxbot's, as OpenClaw's gateway does. On iOS it works only in Home Screen apps. Each frame origin is a scope of its own, which suits one key for each fxbot. A later phase.
+- **Hosted TURN.** Owners deploy their own. A hosted cloud version of fxbot, if one comes, could include it.
+- **PCP port mapping,** until a pure-JavaScript library is fit for the bundle. NAT-PMP and UPnP are in.
+- **Notifications to a closed app.** These would be Web Push signed by fxbot's own VAPID key, which needs no host of fxbot's, as OpenClaw's gateway does.
+  - On iOS, Web Push works only in Home Screen apps.
+  - Each frame origin is a scope of its own, which suits one key for each fxbot.
+  - A later phase.
 - **Rotating fxbot's key without pairing again,** with a signed handover.
 - **A native or Electron phone app,** which would end the web-code trust question.
 - **Devices with limited rights,** such as read-only. Every paired device is the owner.
@@ -645,15 +731,18 @@ Also: **Reach it** gets a line on web pairing beside Tailscale, the plugin direc
 
 ### What changes
 
+All of the peer-to-peer code is in the plugin and the web app. Core gains only two general plugin-API hooks, and a line of data.
+
 | Where | Change |
 | --- | --- |
-| `plugins/web-pairing/` | New: `plugin.json`, `fxbot/server.ts` (keys, relay, pairing, devices, bridge), its migration, `page.jsx` and `page.js` (the Devices tab), README, and `fxbot/server.js`: its server code bundled by rolldown with werift (pinned, 0.26 or newer), `@noble/curves`, the port mapper, and `packages/web-app/protocol/`, committed beside `server.ts` as `page.js` is beside `page.jsx` |
-| `packages/web-app/` | New: `shell/`, `frame/`, `relay/`, `protocol/` (Noise, CPace, the bridge's messages), its build, and `wrangler.toml` |
-| `packages/sdk/src/plugin-api.ts`, `packages/sdk/src/plugins.ts` | `fx.secrets` and `fx.localUrl` |
-| `deploy/fxbot`, `deploy/compose.yaml` | `fxbot pair`, and the ICE ports published for UDP |
-| `scripts/check-web-pairing.mjs` | The Noise and CPace vectors, run by `npm run typecheck` |
+| `plugins/web-pairing/` | New: `plugin.json`; `fxbot/server.ts` (keys, relay, pairing, devices, reachability, the bridge); its migration; `page.jsx` and `page.js` (the Devices tab); README. Also `fxbot/server.js`: its server code bundled by rolldown with werift (pinned, 0.26 or newer), `@noble/curves`, the port mapper, and `packages/web-app/protocol/`, committed beside `server.ts` as `page.js` is beside `page.jsx`. |
+| `packages/web-app/` | New: `shell/`, `frame/`, `relay/`, `protocol/` (Noise, CPace, the bridge's messages, and `check.mjs` with the cacophony and CPace vectors), its build, and `wrangler.toml` |
+| `packages/sdk/src/plugin-api.ts`, `packages/sdk/src/plugins.ts` | `fx.secrets` and `fx.localUrl`, for any plugin |
+| `packages/sdk/src/plugins-registry.json`, `packages/website/public/plugins-registry.json` | `web-pairing` in the directory, and in `essentials` |
 | `packages/website/…`, README, `CHANGELOG.md` | The docs above |
 | Cloudflare | A Worker for web.fxbot.sh with a wildcard route and DNS record for `*.fxbot.sh` frames, and its Durable Object class |
+
+`deploy/`, the server, the UI, and the SDK's client don't change.
 
 **Size:**
 
@@ -661,46 +750,67 @@ Also: **Reach it** gets a line on web pairing beside Tailscale, the plugin direc
 | --- | --- |
 | Protocol: Noise, CPace, and the bridge's messages | about 200 |
 | The relay | about 120 |
-| The plugin's server | about 450 |
-| The plugin's Devices tab | about 200 |
-| The shell | about 450 |
+| The plugin's server: keys, relay, pairing, devices, the bridge | about 450 |
+| Reachability and port mapping | about 150 |
+| The plugin's Devices tab | about 250 |
+| The shell, with the notice | about 500 |
 | The frame | about 200 |
 | SDK hooks | about 30 |
-| `fxbot pair` | about 25 |
 | The vectors check | about 60 |
-| Docs | about 300 |
+| Docs | about 700 |
 
 ## 4. Checklist
 
 **M1. The risky parts first.** A spike, before the rest. Each answer goes into this doc.
 - [ ] A frame on `<frame>.fxbot.sh` inside web.fxbot.sh registers its service worker, and serves fxbot's UI, an image, a plugin's CSS, and the pages plugin's sandboxed frame through it. Check it on iOS Safari and in an iOS Home Screen app, Android Chrome and its installed app, and desktop Chrome, Firefox, and Safari.
-- [ ] werift 0.26, bundled, against Safari on iOS and macOS, Android Chrome, and Firefox, which werift's open issue says never connects ([#438](https://github.com/shinyoshiaki/werift-webrtc/issues/438)). Each gets a channel, a 32 MB file both ways, and a hundred channels at once. If a browser can't connect, node-datachannel moves into core behind a hook, and this doc says so.
+- [ ] werift 0.26, bundled, against Safari on iOS and macOS, Android Chrome, and Firefox, which werift's open issue says never connects ([#438](https://github.com/shinyoshiaki/werift-webrtc/issues/438)).
+  - Each gets a channel, a 32 MB file both ways, and a hundred channels at once.
+  - If a browser can't connect, werift gets the fix, upstream or in a fork the plugin bundles, since it's plain TypeScript, and this doc says so. A native library would need core to carry it, which the owner ruled out.
 - [ ] An iPhone app sent to the background loses its channel, and returns to a working one within 3 s of coming back.
 
 **M2. Protocol and relay**
-- [ ] `packages/web-app/protocol/`: Noise IK and IKpsk2, CPace, and the bridge's messages. `scripts/check-web-pairing.mjs` runs the cacophony and CPace draft-21 vectors, in `npm run typecheck`.
-- [ ] The relay Worker, listen, call, and nameplates, under `wrangler dev`. A listener with the wrong key is refused, the limits hold, and the Worker uses no storage API (checked in its code). Logs are off.
+- [ ] `packages/web-app/protocol/`: Noise IK and IKpsk2, CPace, and the bridge's messages. `check.mjs` runs the cacophony and CPace draft-21 vectors, and the plugin's README says to run it after any change.
+- [ ] The relay Worker, listen, call, and nameplates, under `wrangler dev`:
+  - a listener with the wrong key is refused
+  - the limits hold
+  - the Worker uses no storage API (checked in its code)
+  - logs are off
 
 **M3. The plugin**
 - [ ] `fx.secrets` and `fx.localUrl`, with notes under `## Unreleased`.
 - [ ] Keys made once and sealed; `rid`; the listener, which reconnects after the relay is killed.
-- [ ] Pairing by link and by code against a check page that stands in for the shell: approval with the six digits; a wrong code burns it; three lock pairing; a ticket dies after 10 minutes and with a restart.
-- [ ] Connecting: an unknown key, a revoked one, and a replayed K1 are refused.
+- [ ] No relay connection until a pairing opens or a device is paired, and none after the last device is removed.
+- [ ] `web-pairing` in `essentials`: a new install's onboarding adds it, and with nothing paired it makes no connection and no timer.
+- [ ] Pairing by link and by code, against a check page that stands in for the shell:
+  - approval with the six digits
+  - a wrong code burns it, and three lock pairing
+  - a ticket dies after 10 minutes, and with a restart
+- [ ] Connecting: an unknown key, a removed one, and a replayed K1 are refused.
 - [ ] The bridge: JSON, the chat's stream, a 32 MB file, and the computer's desktop WebSocket, through the channel. The device routes are refused from a frame. Removing a device closes its connection at once.
-- [ ] `fxbot pair` on a release install.
+- [ ] A server with no browser, paired through an SSH tunnel to its 127.0.0.1:8787.
 
 **M4. The web app**
 - [ ] The shell: pair, list, open, reconnect, Devices, Pair another device, `persist()`, and the private-window and iPhone notes.
 - [ ] The frame: the unchanged UI, plugins and all: a chat, the library, the computer's desktop, a page, and Settings.
 - [ ] Against a disposable fxbot on this machine, with `FXBOT_PORT` off 8787 and a local relay.
 
-**M5. Getting through**
-- [ ] STUN, the fixed UDP range, IPv6, and the owner's TURN (Cloudflare key, coturn secret, and plain), on a checkout and in the release's containers, rootless podman's included.
-- [ ] Port mapping by PCP, NAT-PMP, and UPnP, renewed, and shown in Settings.
-- [ ] The 15-second message, with the right advice for each case.
+**M5. Getting through, and saying so**
+- [ ] The ICE list, with Cloudflare's STUN as the one default entry:
+  - add, move, and remove entries, Cloudflare's included
+  - the three kinds of TURN, with credentials minted and sealed
+  - a capture on fxbot's machine shows packets only to listed servers, and none to Google's
+- [ ] The fixed UDP range, IPv6, and NAT-PMP and UPnP mapping, renewed and shown.
+- [ ] Reachability, each case in a throwaway container's own network, with its own nftables, so nothing changes on this machine:
+  - UDP blocked
+  - one STUN server, then two
+  - a symmetric NAT
+  - an address in 100.64/10
+  - a container
+- [ ] The device's own checks, and the 15-second notice, with the right findings and links for each case.
 
 **M6. Docs**
-- [ ] The pages above, `npm run build-site`, and `CHANGELOG.md`.
+- [ ] Every page above, `npm run build-site`, and `CHANGELOG.md`.
+- [ ] Each link from the notice and from Reachability lands on its section.
 
 **M7. Passkey recovery, opt-in**
 - [ ] Setting it up after pairing; using it on a wiped device; fxbot checking the origin, the rpId, user verification, the signature, the time, and the nonce; and every device told.
@@ -711,14 +821,26 @@ Also: **Reach it** gets a line on web pairing beside Tailscale, the plugin direc
   - fxbot restarted and updated meanwhile
   - with no re-pairing
 - [ ] A phone that's lost its data, paired again from a laptop while away.
-- [ ] A Cloudflare deploy: every fxbot back within a minute.
-- [ ] A network that blocks UDP: the message, then the owner's TURN on 443.
+- [ ] A Cloudflare deploy: every paired fxbot back within a minute.
+- [ ] A network that blocks UDP: the notice, then each guide followed end to end:
+  - the TURN guide, on a VPS over TLS on 443
+  - Cloudflare TURN on its own account
+  - the WireGuard guide
+  - the Tailscale guide
+- [ ] Reachability on a real home network with UPnP, on one behind carrier-grade NAT, and in the release's containers.
 
 ## 5. Open questions
 
+Decided by the owner on 2026-11-09 (see What the owner asked):
+- STUN only by default, Cloudflare's, in a list the owner orders and edits.
+- TURN is the owner's own.
+- All of the peer-to-peer code is in a plugin, in Essentials.
+
+Still open:
 1. **Frame names: `<frame>.fxbot.sh` or `<frame>.web.fxbot.sh`?** The default is `<frame>.fxbot.sh`, which Cloudflare's free certificate covers. The second reads better but needs Advanced Certificate Manager, about $10 a month.
 2. **A short code with CPace, or a long one without a PAKE?** The default is `47-3816-0925` with CPace, 28 lines checked against the draft's vectors. A code of about 20 base32 characters, around 100 bits, needs no PAKE and no `@noble/curves`, but it's longer to type.
 3. **The passkey (M7): build it, opt-in?** The default is yes: it's the one way back with no other device and nobody at home, and it can't be phished. Whether it works in an iOS Home Screen app is untested.
-4. **Cloudflare's free plan, or paid ($5 a month)?** The default is paid from launch. On the free plan, going over the cap stops every pairing worldwide until midnight UTC.
+4. **Cloudflare's free plan, or paid ($5 a month)?** The default is paid from launch. On the free plan, going over the cap stops every pairing worldwide until midnight UTC. Essentials adds no load until a device is paired.
 5. **May a paired device pair others?** The default is yes, since that's what keeps a pairing from waiting for home. The alternative is that only fxbot's own screen approves.
-6. **werift in the plugin, or node-datachannel in core?** The default is werift: pure TypeScript, so it bundles into the plugin, and fxbot carries no native code for an owner who never pairs. node-datachannel connects in a third of the time at 2–3× the speed. But it's native, so it would be a core dependency behind a hook, with its Linux builds' OpenSSL 1.1.1 (out of support since 2023) and an MPL-2.0 notice to ship. If werift fails a browser in M1, this flips.
+6. **If werift fails a browser in M1, fix it or fork it?** The default is a fix upstream, with a fork bundled meanwhile. It's plain TypeScript with one maintainer, so either is in reach. node-datachannel connects in a third of the time at 2–3× the speed, but it's native, so core would have to carry it, which the owner ruled out.
+7. **A second relay for devices to fall back on?** The default is the one relay, with the owner's own as a setting. Devices could try fxbot.sh's and then the owner's, so an outage of one doesn't stop reconnects; that's a list where there's one address now.
