@@ -23,9 +23,9 @@ Every provider on **Add provider**, in **Settings** › **Providers**, and in fi
 - A field, such as a region or an account, fills in the provider's address. A field with options takes one of them, and any other field takes a name, with nothing that could change the address's shape.
 - A key goes to the server once and is never sent back. A provider in the list says only whether it holds a key or a sign-in.
 - A sign-in runs on the server. The page gets the link and the code, or the page to open, and when it expires.
-  - **Device code:** ChatGPT, Grok, Vercel, Hugging Face, and OrcaRouter. Open the link on any device, and enter the code.
+  - **Device code:** ChatGPT, Grok, Hugging Face, and OrcaRouter, and Vercel where its sign-in shows. Open the link on any device, and enter the code.
   - **OpenRouter** comes back to fxbot's own page when the page's address is HTTPS or on localhost. On a plain-HTTP address, or when asked, it shows a code to paste instead.
-  - **Vercel and Hugging Face** need fxbot's own app at each, which fxbot's list of providers names, or [`FXBOT_VERCEL_CLIENT_ID` and `FXBOT_HF_CLIENT_ID`](/docs/reference/configuration/) in its place. A sign-in whose app isn't set doesn't show.
+  - **Vercel and Hugging Face** need fxbot's own app at each, which fxbot's list of providers names, or [`FXBOT_VERCEL_CLIENT_ID` and `FXBOT_HF_CLIENT_ID`](/docs/reference/configuration/) in its place. A sign-in whose app isn't set doesn't show. Vercel's isn't, since Vercel doesn't let fxbot's app use a device code yet.
 - **Vertex AI** takes a service account's JSON key. fxbot makes its own hour-long tokens from it, and a new one 5 minutes before each ends.
 - Keys and tokens are stored sealed. See the [security model](/docs/explanation/security/).
 

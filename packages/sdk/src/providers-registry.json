@@ -9,7 +9,7 @@
       "order": 10,
       "connect": "device",
       "signIn": "vercel",
-      "clientId": "cl_0VjhUFXdyXZ7v8NbaX4ug1CqBM1iPxuE",
+      "clientId": "",
       "docs": "/docs/providers/vercel/"
     },
     {

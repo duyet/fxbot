@@ -12,9 +12,9 @@ The page groups providers by how they connect: **Sign in**, **Use a key**, **Clo
 
 ## Sign in with an account
 
-For **Vercel**, **ChatGPT and Codex**, **Grok**, **OpenRouter**, **Hugging Face**, and **OrcaRouter**. There's nothing to copy: each sign-in gives fxbot a key or a token, which it keeps sealed.
+For **ChatGPT and Codex**, **Grok**, **OpenRouter**, **Hugging Face**, and **OrcaRouter**. There's nothing to copy: each sign-in gives fxbot a key or a token, which it keeps sealed.
 
-1. Tap the provider. ChatGPT, Grok, and Vercel start at once. For the others, choose **Sign in with** its name.
+1. Tap the provider. ChatGPT and Grok start at once. For the others, choose **Sign in with** its name.
 2. Most show a code. Open the link on any device, or scan the QR with your phone, sign in, and enter the code. Leave the page open: it finishes by itself.
 3. OpenRouter shows **Continue to OpenRouter** instead. Approve fxbot in the tab it opens, and it comes back to fxbot. When fxbot's address is plain HTTP, such as `http://192.168.1.20:8787`, OpenRouter shows a code to paste instead. **Didn't come back? Use a code instead** asks for one too.
 
