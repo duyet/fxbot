@@ -25,9 +25,18 @@ const wait = (ms: number, signal?: AbortSignal) =>
     signal?.addEventListener("abort", () => (clearTimeout(timer), reject(signal.reason)), { once: true });
   });
 
+// An OAuth error's own words, from its error_description, after a colon, or nothing.
+const reason = async (response: Response) => {
+  const body = await response.json().catch(() => ({}));
+  const said = typeof body.error_description === "string" ? body.error_description : typeof body.error === "string" ? body.error : "";
+  return said ? `: ${said.replace(/\.$/, "").slice(0, 300)}` : "";
+};
+
 export async function startDeviceSignIn(clientId: string, fetch: Fetch): Promise<VercelDevice> {
   const response = await fetch(deviceUrl, form({ client_id: clientId, scope: "openid offline_access" }));
-  if (!response.ok) throw new Error(`Vercel did not issue a device code (HTTP ${response.status}).`);
+  // Vercel says why, such as an app not allowed the device code: "This client is not authorized to use the Device
+  // Authorization flow."
+  if (!response.ok) throw new Error(`Vercel did not issue a device code (HTTP ${response.status})${await reason(response)}.`);
   const body = await response.json();
   // Shown to the user as a link, so it must be Vercel's own page.
   const url = new URL(body.verification_uri_complete ?? body.verification_uri);

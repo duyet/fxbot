@@ -18,7 +18,11 @@ export const json = (fields: Record<string, string>): RequestInit => ({ method: 
 // The code and the page to enter it on, which must be the provider's own, since the page shows it as a link.
 export async function startDevice(fetch: Fetch, url: string, init: RequestInit, name: string, host: string): Promise<Device> {
   const response = await fetch(url, init);
-  if (!response.ok) throw new Error(`${name} did not issue a device code (HTTP ${response.status}).`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const said = typeof body.error_description === "string" ? body.error_description : typeof body.error === "string" ? body.error : "";
+    throw new Error(`${name} did not issue a device code (HTTP ${response.status})${said ? `: ${said.replace(/\.$/, "").slice(0, 300)}` : ""}.`);
+  }
   const body = await response.json();
   const page = new URL(body.verification_uri_complete ?? body.verification_uri);
   if (page.protocol !== "https:" || !(page.hostname === host || page.hostname.endsWith(`.${host}`))) throw new Error(`${name} answered with a sign-in address that is not on ${host}.`);

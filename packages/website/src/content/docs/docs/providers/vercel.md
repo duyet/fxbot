@@ -43,7 +43,8 @@ fxbot lists the models from AI Gateway's own list, whichever way you came in.
 
 ## When it fails
 
-- **No Vercel under Sign in.** fxbot has no Vercel app yet. Use an AI Gateway key.
+- **No Vercel under Sign in.** The server uses its own Vercel app, with `FXBOT_VERCEL_CLIENT_ID`, and it's empty, or fxbot's list of providers didn't name one. Use an AI Gateway key.
+- **"Vercel did not issue a device code (HTTP 401): This client is not authorized to use the Device Authorization flow."** The Vercel app fxbot signs in through isn't allowed device codes yet. Its owner turns that on in the app's settings at Vercel. Meanwhile, use an AI Gateway key.
 - **"Pick a Vercel team for this provider in Settings."** The account has more than one team, and none is picked yet. Pick one under the provider's **Team**.
 - **"This sign-in expired."** The code ran out before you entered it. Choose **Start again** for a new one.
 - **"Vercel did not renew the sign-in."** Use the provider's **Sign in again**.
