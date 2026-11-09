@@ -173,7 +173,11 @@ export function ProviderCard({ entry, catalog, provider, found, onBack, onConnec
           )}
         </p>
       )}
-      {fromTail && !entry.tested && <p className="text-sm text-muted-foreground">Not yet tried with fxbot. It's listed by models.dev as speaking OpenAI's API.</p>}
+      {fromTail && (
+        <p className="text-sm text-muted-foreground">
+          {entry.tested ? "" : "Not yet tried with fxbot. "}models.dev lists it as speaking OpenAI's API at <code className="break-all">{entry.baseUrl}</code>.
+        </p>
+      )}
       {entry.note && <p className="text-sm text-muted-foreground">{entry.note}</p>}
       {entry.signIn && <SignInPanel entry={entry} provider={provider} onDone={onConnected} />}
       {entry.signIn && entry.connect !== "device" && <p className="text-sm font-medium">Or use a key</p>}

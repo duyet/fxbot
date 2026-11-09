@@ -26,7 +26,7 @@ Adding a provider becomes one page that walks the owner through it, in Settings 
 - **The docs get a page for each popular provider:** how to sign in or make a key, the fields, free tiers, and quirks.
 - **A fix comes first.** OpenRouter's model list is public, so the key check fxbot runs there today passes any key.
 
-Status: built on 2026-11-09, for 0.8.0, and checked against stub providers: 69 checks of the SDK and 35 in a browser, all passing (section 4). Real accounts and keys are still to be tried by hand. Where the build differs from the plan, section 3 says so under **Built**. Planned and researched the same day:
+Status: built on 2026-11-09, for 0.8.0, and checked against stub providers: 69 checks of the SDK and 36 in a browser, all passing (section 4). Real accounts and keys are still to be tried by hand. Where the build differs from the plan, section 3 says so under **Built**. Planned and researched the same day:
 - the research directive's references
 - the logins of fx and libfx, and of other agent apps
 - the docs, sign-in endpoints, and model lists of about 60 gateways, labs, clouds, and local servers
@@ -602,6 +602,9 @@ What the build found or changed, against the plan:
 - **Bedrock's key check is optional where it can't be reached.** AWS runs `bedrock-mantle`, where the check asks, in fewer regions than the runtime, such as not in `us-west-1`. There a key was refused as unreachable, however good. An entry's `optionalCheck` keeps the key unchecked when its `keyCheck` can't be reached, and a wrong one shows at the first message.
 - **Vertex AI is now Gemini Enterprise Agent Platform,** in Google's docs: the **Agent Platform API** and the **Agent Platform User** role. The card's steps use the new names, and its address is unchanged.
 - **A recommended model matches without a host's prefix,** as Gemini's list may name its models `models/gemini-…`.
+- **The catalog's answer is about 50 KB,** not 20, with models.dev's hosts in it for search. The page reads it once, when it opens.
+- **A search result from models.dev** shows the address fxbot will use, with "Not yet tried with fxbot".
+- **A plan's usage note** shows on its card before the sign-in, "Your plan's own usage limits apply", rather than after it.
 - **Found by the provider pages' writing, not changed:** Anthropic's list comes 20 to a page, and fxbot reads the first. Anthropic wants a key scoped to a workspace, or a header fxbot doesn't send. A Gemini key refused in a chat shows Gemini's own 400, since a 400 there can be other things too. OpenCode Zen's free models work only in OpenCode's own app, so its card no longer says some are free.
 
 ## 4. Checklist
@@ -621,7 +624,7 @@ What the build found or changed, against the plan:
   - no list, so the catalog's
   - a field in the base URL
   - a header
-- [x] `npm run typecheck`, and `git diff --check`. *Checked by 67 checks against stub hosts, with fxbot's SDK in-process on a throwaway Postgres: the catalog and what it leaves out, each key check, fields, headers, the lists, the long tail, a provider from before 0.8.0, and the migration.*
+- [x] `npm run typecheck`, and `git diff --check`. *Checked by 69 checks against stub hosts, with fxbot's SDK in-process on a throwaway Postgres: the catalog and what it leaves out, each key check, fields, headers, the lists, the long tail, a provider from before 0.8.0, and the migration.*
 
 **M2. Sign-ins**
 - [x] Vercel with fxbot's own client id by default, and `FXBOT_VERCEL_CLIENT_ID` overriding it. *Built as the catalog's `clientId`, which no app fills yet (see **Built**). Checked: a published catalog with an id brings the button and its device code asks with that id, the environment's overrides it, and with neither the sign-in is left out and says how to set one.*
