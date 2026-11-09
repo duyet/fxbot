@@ -17,7 +17,13 @@ For a machine with no screen, such as a VPS, run this on a computer that reaches
 ssh -N -L 8787:127.0.0.1:8787 <user>@<machine>
 ```
 
-While it runs, fxbot is at `http://127.0.0.1:8787` on that computer, and on nothing else. For a phone, use Tailscale.
+While it runs, fxbot is at `http://127.0.0.1:8787` on that computer, and on nothing else. For a phone, use web pairing or Tailscale.
+
+## With web pairing
+
+The **web-pairing** plugin, in **Essentials**, opens your fxbot at [web.fxbot.sh](https://web.fxbot.sh) on a phone or any computer, over a WebRTC connection straight to it. Nothing on the machine is exposed, and fxbot.sh passes only the sealed handshake. You pair each device once. See [Reach fxbot from your phone](/docs/how-to/reach-it-from-your-phone/).
+
+Most networks connect directly. Some, such as work Wi-Fi that blocks UDP, need Tailscale, WireGuard, or a TURN server of your own: **Settings** › **Web pairing** › **Reachability** says in advance, and [When a device can't connect](/docs/how-to/when-a-device-cant-connect/) has the fixes.
 
 ## With Tailscale (recommended)
 
@@ -28,6 +34,14 @@ sudo tailscale serve --bg 8787
 ```
 
 fxbot is then at `https://<machine>.<tailnet>.ts.net` on every device in your tailnet. To give it a name of its own, such as `bot.<tailnet>.ts.net`, see [Serve it at its own name](/docs/how-to/tailscale-service/).
+
+On a phone:
+
+1. Install Tailscale from the App Store or Google Play, and sign in with the same account as the machine.
+2. Turn the VPN on in the app.
+3. Open `https://<machine>.<tailnet>.ts.net` in the browser. [MagicDNS](https://tailscale.com/kb/1081/magicdns), on by default, makes that name work. Add it to the Home Screen to install fxbot as an app.
+
+Tailscale connects where web pairing can't directly, such as on networks that block UDP, through its own relays over HTTPS. With Tailscale on the phone too, web pairing likely connects through the tailnet as well, since the machine's tailnet address is one of its candidates.
 
 ## Through a proxy or VPN of your own
 

@@ -604,7 +604,7 @@ function openBar(link: Link) {
 function noticePanel(link: Link) {
   const n = link.notice!;
   const ways: [string, string][] = [
-    ["Try another network, such as Wi-Fi instead of cellular.", wire.docs.cant],
+    ["Try another network, such as Wi-Fi instead of cellular.", wire.docs.other],
     ["Map or forward a port at home.", wire.docs.port],
     ["Add a TURN server of your own.", wire.docs.turn],
     ["Use Tailscale.", wire.docs.tailscale],

@@ -143,15 +143,24 @@ export type IceServer = { urls: string; username?: string; credential?: string }
 export type Finding = { check: string; result: "good" | "warn" | "bad" | "unknown"; text: string; docs?: string };
 export type Reach = { summary: string; findings: Finding[] };
 
-// Docs pages for what can't connect, in the order the notice offers them.
+// Docs pages for what can't connect, and each finding's own section.
+const how = "https://fxbot.sh/docs/how-to";
 export const docs = {
-  cant: "https://fxbot.sh/docs/how-to/when-a-device-cant-connect/",
-  port: "https://fxbot.sh/docs/how-to/forward-a-port/",
-  turn: "https://fxbot.sh/docs/how-to/run-your-own-turn/",
-  stun: "https://fxbot.sh/docs/how-to/run-your-own-stun/",
-  tailscale: "https://fxbot.sh/docs/how-to/reach-it/",
-  wireguard: "https://fxbot.sh/docs/how-to/reach-it-with-wireguard/",
-  relay: "https://fxbot.sh/docs/how-to/run-your-own-relay/",
-  phone: "https://fxbot.sh/docs/how-to/reach-it-from-your-phone/",
-  another: "https://fxbot.sh/docs/how-to/pair-another-device/",
+  cant: `${how}/when-a-device-cant-connect/`,
+  udp: `${how}/when-a-device-cant-connect/#udp-is-blocked`,
+  symmetric: `${how}/when-a-device-cant-connect/#a-symmetric-nat`,
+  cgnat: `${how}/when-a-device-cant-connect/#carrier-grade-nat`,
+  unmapped: `${how}/when-a-device-cant-connect/#no-mapped-port`,
+  other: `${how}/when-a-device-cant-connect/#try-another-network`,
+  noStun: `${how}/when-a-device-cant-connect/#no-stun-server-answered`,
+  port: `${how}/forward-a-port/`,
+  container: `${how}/forward-a-port/#from-the-release-containers`,
+  turn: `${how}/run-your-own-turn/`,
+  stun: `${how}/run-your-own-stun/`,
+  secondStun: `${how}/run-your-own-stun/#add-a-second-stun-server`,
+  tailscale: `${how}/reach-it/#with-tailscale-recommended`,
+  wireguard: `${how}/reach-it-with-wireguard/`,
+  relay: `${how}/run-your-own-relay/`,
+  phone: `${how}/reach-it-from-your-phone/`,
+  another: `${how}/pair-another-device/`,
 };

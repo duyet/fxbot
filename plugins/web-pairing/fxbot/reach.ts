@@ -216,8 +216,8 @@ export async function check(list: IceEntry[], mapper: Mapper): Promise<Reach> {
     socket.close();
   }
   const turn = list.some((e) => e.kind !== "stun");
-  if (!targets.length) findings.push({ check: "udp", result: "unknown", text: "There's no STUN server in the list, so fxbot can't check its network. Add one under ICE servers.", docs: docs.stun });
-  else if (!answers.length) findings.push({ check: "udp", result: "bad", text: "This network blocks UDP, so devices can't connect directly. Use Tailscale or WireGuard, or a TURN server of your own over TLS.", docs: docs.cant });
+  if (!targets.length) findings.push({ check: "udp", result: "unknown", text: "There's no STUN server in the list, so fxbot can't check its network. Add one under ICE servers.", docs: docs.noStun });
+  else if (!answers.length) findings.push({ check: "udp", result: "bad", text: "This network blocks UDP, so devices can't connect directly. Use Tailscale or WireGuard, or a TURN server of your own over TLS.", docs: docs.udp });
   else findings.push({ check: "udp", result: "good", text: "UDP gets out, and a STUN server answered." });
 
   const external = answers[0]?.address;
@@ -225,21 +225,21 @@ export async function check(list: IceEntry[], mapper: Mapper): Promise<Reach> {
   const mapped = mapper.state;
   const cgnat = Boolean(external && (isCgnat(external) || (mapped.external && mapped.external !== external) || (mapped.external && isCgnat(mapped.external))));
   if (external && own.includes(external)) findings.push({ check: "address", result: "good", text: `This machine has a public address, ${external}, with no NAT in front of it.` });
-  else if (cgnat) findings.push({ check: "address", result: "bad", text: "This fxbot is behind carrier-grade NAT. Devices on other networks likely can't reach it directly, and forwarding a port won't help. TURN, Tailscale, or WireGuard will.", docs: docs.cant });
+  else if (cgnat) findings.push({ check: "address", result: "bad", text: "This fxbot is behind carrier-grade NAT. Devices on other networks likely can't reach it directly, and forwarding a port won't help. TURN, Tailscale, or WireGuard will.", docs: docs.cgnat });
   else if (external) findings.push({ check: "address", result: "good", text: `Its public address is ${external}.` });
 
   let symmetric = false;
   if (answers.length >= 2) {
     symmetric = answers[0].port !== answers[1].port;
     findings.push(symmetric
-      ? { check: "nat", result: "bad", text: "This network's NAT maps ports per destination (a symmetric NAT), so phones on many carriers can't reach it directly. A mapped port, TURN, or Tailscale will.", docs: docs.port }
+      ? { check: "nat", result: "bad", text: "This network's NAT maps ports per destination (a symmetric NAT), so phones on many carriers can't reach it directly. A mapped port, TURN, or Tailscale will.", docs: docs.symmetric }
       : { check: "nat", result: "good", text: "This network's NAT keeps one port for every destination, which most devices can reach." });
-  } else if (answers.length === 1) findings.push({ check: "nat", result: "unknown", text: "Only one STUN answer, so fxbot can't tell how its NAT maps ports. Add a second STUN server to find out.", docs: docs.stun });
+  } else if (answers.length === 1) findings.push({ check: "nat", result: "unknown", text: "Only one STUN answer, so fxbot can't tell how its NAT maps ports. Add a second STUN server to find out.", docs: docs.secondStun });
 
   const container = inContainer();
-  if (container) findings.push({ check: "container", result: "warn", text: "fxbot runs in a container, so port mapping can't work from inside it. To forward a port, publish 8790–8799/udp, as the docs show.", docs: docs.port });
+  if (container) findings.push({ check: "container", result: "warn", text: "fxbot runs in a container, so port mapping can't work from inside it. To forward a port, publish 8790–8799/udp, as the docs show.", docs: docs.container });
   else if (mapped.how) findings.push({ check: "mapping", result: "good", text: `The router mapped UDP ${mapped.ports?.join("–")} by ${mapped.how}${mapped.external ? `, at ${mapped.external}` : ""}. Devices on any network that allows UDP can likely reach this fxbot.` });
-  else if (mapped.error) findings.push({ check: "mapping", result: "warn", text: `${mapped.error} A port forwarded by hand can't be seen from inside, so if you forwarded one, this is expected.`, docs: docs.port });
+  else if (mapped.error) findings.push({ check: "mapping", result: "warn", text: `${mapped.error} A port forwarded by hand can't be seen from inside, so if you forwarded one, this is expected.`, docs: docs.unmapped });
 
   const v6 = globalV6();
   findings.push(v6 ? { check: "ipv6", result: "good", text: "This machine has IPv6. Devices with IPv6 can likely connect directly." } : { check: "ipv6", result: "unknown", text: "This machine has no global IPv6 address." });
